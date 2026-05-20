@@ -409,21 +409,22 @@ class StatusBar(ttk.Frame):
     """Top bar with four large numeric readouts. The fan tile also has a progress bar."""
 
     def __init__(self, master, font_family="Segoe UI"):
-        super().__init__(master, padding=(6, 6))
+        super().__init__(master, padding=(0, 0))
         self._tiles = {}
         labels = [("cpu", "CPU"), ("gpu", "GPU"), ("t", "加权温度"), ("speed", "风扇")]
         for i, (key, label) in enumerate(labels):
             tile = ttk.LabelFrame(self, text=label, padding=12)
-            tile.grid(row=0, column=i, padx=5, sticky="nsew")
-            ttk.Label(tile, text=label, font=(font_family, 9)).pack(anchor="center")
-            value = ttk.Label(tile, text="--", font=(font_family, 26, "bold"))
-            value.pack(pady=(6, 0), anchor="center")
+            tile.grid(row=0, column=i, padx=(0 if i == 0 else 8, 0), sticky="nsew")
+            tile.grid_columnconfigure(0, weight=1)
+            ttk.Label(tile, text=label, font=(font_family, 11)).grid(row=0, column=0, sticky="ew")
+            value = ttk.Label(tile, text="--", font=(font_family, 32, "bold"), anchor="center")
+            value.grid(row=1, column=0, sticky="ew", pady=(6, 0))
             self._tiles[key] = value
             if key == "speed":
                 self._fan_bar = ttk.Progressbar(
                     tile, length=130, maximum=100, mode="determinate"
                 )
-                self._fan_bar.pack(fill=tk.X, pady=(6, 1))
+                self._fan_bar.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         for i in range(4):
             self.grid_columnconfigure(i, weight=1, uniform="tile")
 
@@ -485,7 +486,7 @@ class CurveEditor(ttk.Frame):
                 spine.set_color(palette["fg"])
                 spine.set_linewidth(0.5)
                 spine.set_alpha(0.7)
-        self.ax.tick_params(colors=palette["fg"])
+        self.ax.tick_params(colors=palette["fg"], labelsize=10)
         self.ax.xaxis.label.set_color(palette["fg"])
         self.ax.yaxis.label.set_color(palette["fg"])
         self.ax.title.set_color(palette["fg"])
@@ -550,7 +551,7 @@ class App:
         self._tray_icon = None
 
         try:
-            self.font_prop = fm.FontProperties(fname=FONT_PATH)
+            self.font_prop = fm.FontProperties(fname=FONT_PATH, size=11)
         except Exception:
             self.font_prop = None
 
@@ -571,12 +572,12 @@ class App:
     # ---- Layout ----
     def _build_layout(self):
         self.root.grid_rowconfigure(0, weight=0)
-        self.root.grid_rowconfigure(1, weight=1)
-        self.root.grid_rowconfigure(2, weight=0)
+        self.root.grid_rowconfigure(1, weight=2)
+        self.root.grid_rowconfigure(2, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
         top = ttk.Frame(self.root)
-        top.grid(row=0, column=0, sticky="ew", padx=15, pady=(10, 4))
+        top.grid(row=0, column=0, sticky="ew", padx=20, pady=(14, 6))
         top.grid_columnconfigure(0, weight=1)
         top.grid_columnconfigure(1, weight=0)
 
@@ -585,103 +586,123 @@ class App:
         self._build_action_bar(top)
 
         self.middle = ttk.Frame(self.root)
-        self.middle.grid(row=1, column=0, sticky="nsew", padx=20, pady=4)
+        self.middle.grid(row=1, column=0, sticky="nsew", padx=20, pady=(6, 0))
         self.middle.grid_rowconfigure(0, weight=1)
         self.middle.grid_columnconfigure(0, weight=1)
-        self.middle.grid_columnconfigure(1, weight=0, minsize=290)
+        self.middle.grid_columnconfigure(1, weight=0, minsize=310)
 
         self._build_chart_area(self.middle)
         self._build_controls_panel(self.middle)
         self._build_curve_section(self.root)
 
     def _build_action_bar(self, parent):
-        action_bar = ttk.LabelFrame(parent, text="操作", padding=8)
+        action_bar = ttk.LabelFrame(parent, text="操作", padding=(12, 10))
         action_bar.grid(row=0, column=1, sticky="ne", padx=(12, 0))
+        for i in range(3):
+            action_bar.grid_columnconfigure(i, weight=1, uniform="action")
         ttk.Button(action_bar, text="切换主题", command=self.toggle_theme, width=12
-                   ).pack(side=tk.LEFT, padx=3)
+                   ).grid(row=0, column=0, sticky="ew", padx=(0, 6))
         ttk.Button(action_bar, text="最小化到托盘", command=self.minimize_to_tray, width=14
-                   ).pack(side=tk.LEFT, padx=3)
+                   ).grid(row=0, column=1, sticky="ew", padx=6)
         self.startup_button = ttk.Button(
             action_bar,
             text="移除开机自启动" if is_in_startup(STARTUP_IDENTIFIER) else "添加开机自启动",
             command=self.toggle_startup,
             width=14,
         )
-        self.startup_button.pack(side=tk.LEFT, padx=3)
+        self.startup_button.grid(row=0, column=2, sticky="ew", padx=(6, 0))
 
     def _build_chart_area(self, parent):
-        self.chart_box = ttk.LabelFrame(parent, text="实时监控", padding=8)
-        self.chart_box.grid(row=0, column=0, sticky="nsew", padx=(18, 14))
+        self.chart_box = ttk.LabelFrame(parent, text="实时监控", padding=(12, 10))
+        self.chart_box.grid(row=0, column=0, sticky="nsew", padx=(0, 16), pady=0)
+        self.chart_box.grid_rowconfigure(0, weight=1)
+        self.chart_box.grid_columnconfigure(0, weight=1)
         self.fig, self.ax = plt.subplots(figsize=(5.2, 3.2))
-        self.fig.subplots_adjust(left=0.12, right=0.94, top=0.88, bottom=0.22)
+        self.fig.subplots_adjust(left=0.1, right=0.96, top=0.9, bottom=0.18)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.chart_box)
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
         self._apply_chart_palette()
 
     def _build_controls_panel(self, parent):
         self.controls_panel = ttk.Frame(parent)
-        self.controls_panel.grid(row=0, column=1, sticky="new", padx=(0, 4))
+        self.controls_panel.grid(row=0, column=1, sticky="new", padx=(0, 0), pady=0)
         self.controls_panel.grid_columnconfigure(0, weight=1)
 
         # Preset
-        self.preset_box = ttk.LabelFrame(self.controls_panel, text="预设方案", padding=8)
+        self.preset_box = ttk.LabelFrame(self.controls_panel, text="预设方案", padding=(12, 10))
         self.preset_box.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        for key, label, _curve, _strategy in PRESETS:
+        for i in range(len(PRESETS)):
+            self.preset_box.grid_columnconfigure(i, weight=1, uniform="preset")
+        for i, (key, label, _curve, _strategy) in enumerate(PRESETS):
             ttk.Button(self.preset_box, text=label,
-                       command=lambda k=key: self._apply_preset(k)
-                       ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+                       command=lambda k=key: self._apply_preset(k), width=8
+                       ).grid(row=0, column=i, sticky="ew", padx=(0 if i == 0 else 6, 0))
 
         # Strategy
-        self.strategy_box = ttk.LabelFrame(self.controls_panel, text="温度策略", padding=8)
+        self.strategy_box = ttk.LabelFrame(self.controls_panel, text="温度策略", padding=(12, 10))
         self.strategy_box.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        self.strategy_box.grid_columnconfigure(0, weight=0)
+        self.strategy_box.grid_columnconfigure(1, weight=1)
         self.strategy_var = tk.StringVar(value=self.config["strategy"])
         self._strategy_labels = {label: key for key, label in STRATEGIES}
         self._strategy_keys = {key: label for key, label in STRATEGIES}
+        ttk.Label(self.strategy_box, text="策略").grid(row=0, column=0, sticky="w", padx=(0, 10))
         self.strategy_combo = ttk.Combobox(
             self.strategy_box, textvariable=self.strategy_var, state="readonly",
-            values=[label for _, label in STRATEGIES], width=21,
+            values=[label for _, label in STRATEGIES], width=20,
         )
         self.strategy_combo.set(self._strategy_keys.get(self.config["strategy"], STRATEGIES[0][1]))
         self.strategy_combo.bind("<<ComboboxSelected>>", self._on_strategy_change)
-        self.strategy_combo.pack(fill=tk.X)
+        self.strategy_combo.grid(row=0, column=1, sticky="ew")
 
         # Manual mode
-        self.manual_box = ttk.LabelFrame(self.controls_panel, text="手动模式", padding=8)
+        self.manual_box = ttk.LabelFrame(self.controls_panel, text="手动模式", padding=(12, 10))
         self.manual_box.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        self.manual_box.grid_columnconfigure(0, weight=0)
+        self.manual_box.grid_columnconfigure(1, weight=1)
         self.manual_var = tk.BooleanVar(value=bool(self.config.get("manual_enabled", False)))
         ttk.Checkbutton(self.manual_box, text="锁定转速",
                         variable=self.manual_var, command=self._on_manual_toggle,
-                        ).pack(anchor="w", pady=(0, 3))
+                        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
         self.manual_speed_var = tk.IntVar(value=int(self.config.get("manual_speed", 50)))
-        self.manual_value_label = ttk.Label(self.manual_box, text=f"{self.manual_speed_var.get()} %")
-        self.manual_value_label.pack(anchor="w")
+        ttk.Label(self.manual_box, text="转速").grid(row=1, column=0, sticky="w", padx=(0, 10))
+        self.manual_value_label = ttk.Label(self.manual_box, text=f"{self.manual_speed_var.get()} %", anchor="e")
+        self.manual_value_label.grid(row=1, column=1, sticky="e")
         self.manual_slider = ttk.Scale(
             self.manual_box, from_=0, to=100, orient=tk.HORIZONTAL,
             variable=self.manual_speed_var, command=self._on_manual_slide,
         )
-        self.manual_slider.pack(fill=tk.X, pady=(3, 0))
+        self.manual_slider.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         self._sync_manual_controls()
 
         # History range
-        self.range_box = ttk.LabelFrame(self.controls_panel, text="历史范围（分钟）", padding=8)
+        self.range_box = ttk.LabelFrame(self.controls_panel, text="历史范围（分钟）", padding=(12, 10))
         self.range_box.grid(row=3, column=0, sticky="ew", pady=(0, 12))
+        self.range_box.grid_columnconfigure(0, weight=0)
+        self.range_box.grid_columnconfigure(1, weight=1)
         self.time_entry_var = tk.StringVar(value=str(self.config.get("time_entry", "5")))
-        ttk.Entry(self.range_box, textvariable=self.time_entry_var).pack(fill=tk.X)
+        ttk.Label(self.range_box, text="分钟").grid(row=0, column=0, sticky="w", padx=(0, 10))
+        ttk.Entry(self.range_box, textvariable=self.time_entry_var, width=10).grid(row=0, column=1, sticky="ew")
 
     def _build_curve_section(self, parent):
-        self.curve_box = ttk.LabelFrame(parent, text="风扇曲线（拖动控制点）", padding=8)
-        self.curve_box.grid(row=2, column=0, sticky="ew", padx=(42, 316), pady=(4, 10))
+        self.curve_box = ttk.LabelFrame(parent, text="风扇曲线（拖动控制点）", padding=(12, 10))
+        self.curve_box.grid(row=2, column=0, sticky="nsew", padx=20, pady=(10, 20))
+        self.curve_box.grid_rowconfigure(0, weight=1)
+        self.curve_box.grid_columnconfigure(0, weight=1)
         self.curve_editor = CurveEditor(
             self.curve_box, self.config["curve"], on_change=self._on_curve_change,
             font_prop=self.font_prop, palette=self.palette,
         )
-        self.curve_editor.pack(fill=tk.BOTH, expand=True)
+        self.curve_editor.grid(row=0, column=0, sticky="nsew")
 
     # ---- Theme ----
     def _apply_theme(self, theme, redraw=True):
         self.theme = theme if theme in ("light", "dark") else "light"
         if HAS_SV_TTK:
             sv_ttk.set_theme(self.theme)
+        style = ttk.Style()
+        style.configure(".", font=("Microsoft YaHei UI", 11))
+        style.configure("TLabelframe.Label", font=("Microsoft YaHei UI", 11, "bold"))
         self.palette = palette_for(self.theme)
         if redraw:
             self._apply_chart_palette()
@@ -708,7 +729,7 @@ class App:
                 spine.set_color(p["fg"])
                 spine.set_linewidth(0.5)
                 spine.set_alpha(0.7)
-        self.ax.tick_params(colors=p["fg"])
+        self.ax.tick_params(colors=p["fg"], labelsize=10)
         self.canvas.draw_idle()
 
     # ---- Event handlers ----
@@ -809,7 +830,7 @@ class App:
                 spine.set_color(p["fg"])
                 spine.set_linewidth(0.5)
                 spine.set_alpha(0.7)
-        self.ax.tick_params(colors=p["fg"])
+        self.ax.tick_params(colors=p["fg"], labelsize=10)
         self.ax.grid(True, alpha=0.15, color=p["grid"], linestyle='--')
         kwargs = {"fontproperties": self.font_prop} if self.font_prop else {}
         self.ax.set_xlabel('时间', color=p["fg"], **kwargs)
