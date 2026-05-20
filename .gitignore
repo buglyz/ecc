@@ -1,0 +1,7 @@
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.claude/
+.DS_Store

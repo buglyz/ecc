@@ -559,97 +559,104 @@ class App:
         self.root.grid_rowconfigure(2, weight=0)
         self.root.grid_columnconfigure(0, weight=1)
 
-        self.status_bar = StatusBar(self.root)
-        self.status_bar.grid(row=0, column=0, sticky="ew", padx=15, pady=(10, 4))
+        top = ttk.Frame(self.root)
+        top.grid(row=0, column=0, sticky="ew", padx=15, pady=(10, 4))
+        top.grid_columnconfigure(0, weight=1)
+        top.grid_columnconfigure(1, weight=0)
 
-        middle = ttk.Frame(self.root)
-        middle.grid(row=1, column=0, sticky="nsew", padx=24, pady=4)
-        middle.grid_rowconfigure(0, weight=1)
-        middle.grid_columnconfigure(0, weight=1)
-        middle.grid_columnconfigure(1, weight=0, minsize=330)
+        self.status_bar = StatusBar(top)
+        self.status_bar.grid(row=0, column=0, sticky="ew")
+        self._build_action_bar(top)
 
-        self._build_chart_area(middle)
-        self._build_controls_panel(middle)
+        self.middle = ttk.Frame(self.root)
+        self.middle.grid(row=1, column=0, sticky="nsew", padx=20, pady=4)
+        self.middle.grid_rowconfigure(0, weight=1)
+        self.middle.grid_columnconfigure(0, weight=1)
+        self.middle.grid_columnconfigure(1, weight=0, minsize=290)
+
+        self._build_chart_area(self.middle)
+        self._build_controls_panel(self.middle)
         self._build_curve_section(self.root)
 
+    def _build_action_bar(self, parent):
+        action_bar = ttk.LabelFrame(parent, text="操作", padding=8)
+        action_bar.grid(row=0, column=1, sticky="ne", padx=(12, 0))
+        ttk.Button(action_bar, text="切换主题", command=self.toggle_theme, width=12
+                   ).pack(side=tk.LEFT, padx=3)
+        ttk.Button(action_bar, text="最小化到托盘", command=self.minimize_to_tray, width=14
+                   ).pack(side=tk.LEFT, padx=3)
+        self.startup_button = ttk.Button(
+            action_bar,
+            text="移除开机自启动" if is_in_startup(STARTUP_IDENTIFIER) else "添加开机自启动",
+            command=self.toggle_startup,
+            width=14,
+        )
+        self.startup_button.pack(side=tk.LEFT, padx=3)
+
     def _build_chart_area(self, parent):
-        chart_box = ttk.LabelFrame(parent, text="实时监控", padding=8)
-        chart_box.grid(row=0, column=0, sticky="nsew", padx=(40, 18))
-        self.fig, self.ax = plt.subplots(figsize=(5.4, 3.3))
+        self.chart_box = ttk.LabelFrame(parent, text="实时监控", padding=8)
+        self.chart_box.grid(row=0, column=0, sticky="nsew", padx=(18, 14))
+        self.fig, self.ax = plt.subplots(figsize=(5.2, 3.2))
         self.fig.subplots_adjust(left=0.12, right=0.94, top=0.88, bottom=0.22)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=chart_box)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.chart_box)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self._apply_chart_palette()
 
     def _build_controls_panel(self, parent):
-        panel = ttk.Frame(parent, width=350)
-        panel.grid(row=0, column=1, sticky="n")
-        panel.grid_propagate(False)
+        self.controls_panel = ttk.Frame(parent)
+        self.controls_panel.grid(row=0, column=1, sticky="new", padx=(0, 4))
+        self.controls_panel.grid_columnconfigure(0, weight=1)
 
         # Preset
-        preset_box = ttk.LabelFrame(panel, text="预设方案", padding=8)
-        preset_box.pack(fill=tk.X, pady=(0, 8))
+        self.preset_box = ttk.LabelFrame(self.controls_panel, text="预设方案", padding=8)
+        self.preset_box.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         for key, label, _curve, _strategy in PRESETS:
-            ttk.Button(preset_box, text=label,
+            ttk.Button(self.preset_box, text=label,
                        command=lambda k=key: self._apply_preset(k)
                        ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
 
         # Strategy
-        strategy_box = ttk.LabelFrame(panel, text="温度策略", padding=8)
-        strategy_box.pack(fill=tk.X, pady=(0, 8))
+        self.strategy_box = ttk.LabelFrame(self.controls_panel, text="温度策略", padding=8)
+        self.strategy_box.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         self.strategy_var = tk.StringVar(value=self.config["strategy"])
         self._strategy_labels = {label: key for key, label in STRATEGIES}
         self._strategy_keys = {key: label for key, label in STRATEGIES}
         self.strategy_combo = ttk.Combobox(
-            strategy_box, textvariable=self.strategy_var, state="readonly",
-            values=[label for _, label in STRATEGIES], width=26,
+            self.strategy_box, textvariable=self.strategy_var, state="readonly",
+            values=[label for _, label in STRATEGIES], width=21,
         )
         self.strategy_combo.set(self._strategy_keys.get(self.config["strategy"], STRATEGIES[0][1]))
         self.strategy_combo.bind("<<ComboboxSelected>>", self._on_strategy_change)
         self.strategy_combo.pack(fill=tk.X)
 
         # Manual mode
-        manual_box = ttk.LabelFrame(panel, text="手动模式", padding=8)
-        manual_box.pack(fill=tk.X, pady=(0, 8))
+        self.manual_box = ttk.LabelFrame(self.controls_panel, text="手动模式", padding=8)
+        self.manual_box.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         self.manual_var = tk.BooleanVar(value=bool(self.config.get("manual_enabled", False)))
-        ttk.Checkbutton(manual_box, text="锁定转速",
+        ttk.Checkbutton(self.manual_box, text="锁定转速",
                         variable=self.manual_var, command=self._on_manual_toggle,
                         ).pack(anchor="w", pady=(0, 3))
         self.manual_speed_var = tk.IntVar(value=int(self.config.get("manual_speed", 50)))
-        self.manual_value_label = ttk.Label(manual_box, text=f"{self.manual_speed_var.get()} %")
+        self.manual_value_label = ttk.Label(self.manual_box, text=f"{self.manual_speed_var.get()} %")
         self.manual_value_label.pack(anchor="w")
         self.manual_slider = ttk.Scale(
-            manual_box, from_=0, to=100, orient=tk.HORIZONTAL,
+            self.manual_box, from_=0, to=100, orient=tk.HORIZONTAL,
             variable=self.manual_speed_var, command=self._on_manual_slide,
         )
         self.manual_slider.pack(fill=tk.X, pady=(3, 0))
         self._sync_manual_controls()
 
         # History range
-        range_box = ttk.LabelFrame(panel, text="历史范围（分钟）", padding=8)
-        range_box.pack(fill=tk.X, pady=(0, 8))
+        self.range_box = ttk.LabelFrame(self.controls_panel, text="历史范围（分钟）", padding=8)
+        self.range_box.grid(row=3, column=0, sticky="ew")
         self.time_entry_var = tk.StringVar(value=str(self.config.get("time_entry", "5")))
-        ttk.Entry(range_box, textvariable=self.time_entry_var).pack(fill=tk.X)
-
-        # Actions
-        action_box = ttk.LabelFrame(panel, text="操作", padding=8)
-        action_box.pack(fill=tk.X, side=tk.BOTTOM)
-        ttk.Button(action_box, text="切换主题", command=self.toggle_theme
-                   ).pack(fill=tk.X, pady=2)
-        ttk.Button(action_box, text="最小化到托盘", command=self.minimize_to_tray
-                   ).pack(fill=tk.X, pady=2)
-        self.startup_button = ttk.Button(
-            action_box,
-            text="移除开机自启动" if is_in_startup(STARTUP_IDENTIFIER) else "添加开机自启动",
-            command=self.toggle_startup,
-        )
-        self.startup_button.pack(fill=tk.X, pady=2)
+        ttk.Entry(self.range_box, textvariable=self.time_entry_var).pack(fill=tk.X)
 
     def _build_curve_section(self, parent):
-        curve_box = ttk.LabelFrame(parent, text="风扇曲线（拖动控制点）", padding=8)
-        curve_box.grid(row=2, column=0, sticky="ew", padx=55, pady=(4, 14))
+        self.curve_box = ttk.LabelFrame(parent, text="风扇曲线（拖动控制点）", padding=8)
+        self.curve_box.grid(row=2, column=0, sticky="ew", padx=(42, 316), pady=(4, 10))
         self.curve_editor = CurveEditor(
-            curve_box, self.config["curve"], on_change=self._on_curve_change,
+            self.curve_box, self.config["curve"], on_change=self._on_curve_change,
             font_prop=self.font_prop, palette=self.palette,
         )
         self.curve_editor.pack(fill=tk.BOTH, expand=True)
