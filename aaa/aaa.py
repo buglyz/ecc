@@ -447,8 +447,8 @@ class CurveEditor(ttk.Frame):
         self.palette = palette or LIGHT_PALETTE
         self.curve = [list(p) for p in curve]
 
-        self.fig, self.ax = plt.subplots(figsize=(10, 2.4))
-        self.fig.subplots_adjust(left=0.05, right=0.99, top=0.85, bottom=0.22)
+        self.fig, self.ax = plt.subplots(figsize=(8.2, 2.2))
+        self.fig.subplots_adjust(left=0.07, right=0.95, top=0.83, bottom=0.24)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
@@ -563,10 +563,10 @@ class App:
         self.status_bar.grid(row=0, column=0, sticky="ew", padx=15, pady=(10, 4))
 
         middle = ttk.Frame(self.root)
-        middle.grid(row=1, column=0, sticky="nsew", padx=15, pady=4)
+        middle.grid(row=1, column=0, sticky="nsew", padx=24, pady=4)
         middle.grid_rowconfigure(0, weight=1)
         middle.grid_columnconfigure(0, weight=1)
-        middle.grid_columnconfigure(1, weight=0, minsize=350)
+        middle.grid_columnconfigure(1, weight=0, minsize=330)
 
         self._build_chart_area(middle)
         self._build_controls_panel(middle)
@@ -574,9 +574,9 @@ class App:
 
     def _build_chart_area(self, parent):
         chart_box = ttk.LabelFrame(parent, text="实时监控", padding=8)
-        chart_box.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
-        self.fig, self.ax = plt.subplots(figsize=(6.5, 3.6))
-        self.fig.subplots_adjust(left=0.11, right=0.96, top=0.9, bottom=0.2)
+        chart_box.grid(row=0, column=0, sticky="nsew", padx=(40, 18))
+        self.fig, self.ax = plt.subplots(figsize=(5.4, 3.3))
+        self.fig.subplots_adjust(left=0.12, right=0.94, top=0.88, bottom=0.22)
         self.canvas = FigureCanvasTkAgg(self.fig, master=chart_box)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self._apply_chart_palette()
@@ -646,8 +646,8 @@ class App:
         self.startup_button.pack(fill=tk.X, pady=2)
 
     def _build_curve_section(self, parent):
-        curve_box = ttk.LabelFrame(parent, text="风扇曲线（拖动控制点）", padding=10)
-        curve_box.grid(row=2, column=0, sticky="ew", padx=15, pady=(5, 15))
+        curve_box = ttk.LabelFrame(parent, text="风扇曲线（拖动控制点）", padding=8)
+        curve_box.grid(row=2, column=0, sticky="ew", padx=55, pady=(4, 14))
         self.curve_editor = CurveEditor(
             curve_box, self.config["curve"], on_change=self._on_curve_change,
             font_prop=self.font_prop, palette=self.palette,
