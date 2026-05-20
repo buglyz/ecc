@@ -40,7 +40,7 @@ EC_PROBE = os.path.join(ROOT_DIR, 'ec-probe.exe')
 HWMON_DLL = os.path.join(APP_DIR, 'data', 'LibreHardwareMonitorLib.dll')
 CONFIG_PATH = os.path.join(APP_DIR, 'config.json')
 LEGACY_CONFIG_PATH = os.path.join(APP_DIR, 'data.dat')
-FONT_PATH = 'C:/Windows/Fonts/simhei.ttf'
+FONT_PATH = 'C:/Windows/Fonts/msyh.ttc'
 
 # ---------- EC + tuning constants ----------
 EC_REG_FAN1 = '0x2C'
@@ -99,11 +99,21 @@ def is_admin():
         return False
 
 
+def set_dpi_awareness():
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except Exception:
+            pass
+
+
 if not is_admin():
     ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
     sys.exit()
 
-ctypes.windll.shcore.SetProcessDpiAwareness(1)
+set_dpi_awareness()
 
 
 # ---------- Subprocess plumbing ----------
@@ -403,11 +413,11 @@ class StatusBar(ttk.Frame):
         self._tiles = {}
         labels = [("cpu", "CPU"), ("gpu", "GPU"), ("t", "加权温度"), ("speed", "风扇")]
         for i, (key, label) in enumerate(labels):
-            tile = ttk.Frame(self, padding=8, relief="flat")
+            tile = ttk.LabelFrame(self, text=label, padding=12)
             tile.grid(row=0, column=i, padx=5, sticky="nsew")
-            ttk.Label(tile, text=label, font=(font_family, 10)).pack(anchor="center")
-            value = ttk.Label(tile, text="--", font=(font_family, 22, "bold"))
-            value.pack(pady=(2, 0), anchor="center")
+            ttk.Label(tile, text=label, font=(font_family, 9)).pack(anchor="center")
+            value = ttk.Label(tile, text="--", font=(font_family, 26, "bold"))
+            value.pack(pady=(6, 0), anchor="center")
             self._tiles[key] = value
             if key == "speed":
                 self._fan_bar = ttk.Progressbar(
@@ -467,8 +477,14 @@ class CurveEditor(ttk.Frame):
         self.palette = palette
         self.fig.patch.set_facecolor(palette["bg"])
         self.ax.set_facecolor(palette["bg"])
-        for spine in self.ax.spines.values():
-            spine.set_color(palette["fg"])
+        for name, spine in self.ax.spines.items():
+            if name in ("top", "right"):
+                spine.set_visible(False)
+            else:
+                spine.set_visible(True)
+                spine.set_color(palette["fg"])
+                spine.set_linewidth(0.5)
+                spine.set_alpha(0.7)
         self.ax.tick_params(colors=palette["fg"])
         self.ax.xaxis.label.set_color(palette["fg"])
         self.ax.yaxis.label.set_color(palette["fg"])
@@ -477,7 +493,7 @@ class CurveEditor(ttk.Frame):
         self.scatter.set_color(palette["point"])
         self.ax.set_xlim(CURVE_TEMP_MIN, CURVE_TEMP_MAX)
         self.ax.set_ylim(CURVE_SPEED_MIN - 5, CURVE_SPEED_MAX + 5)
-        self.ax.grid(True, alpha=0.3, color=palette["grid"])
+        self.ax.grid(True, alpha=0.15, color=palette["grid"], linestyle='--')
         kwargs = {"fontproperties": self.font_prop} if self.font_prop else {}
         self.ax.set_xlabel("温度 °C", **kwargs)
         self.ax.set_ylabel("风扇 %", **kwargs)
@@ -609,7 +625,7 @@ class App:
 
         # Preset
         self.preset_box = ttk.LabelFrame(self.controls_panel, text="预设方案", padding=8)
-        self.preset_box.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        self.preset_box.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         for key, label, _curve, _strategy in PRESETS:
             ttk.Button(self.preset_box, text=label,
                        command=lambda k=key: self._apply_preset(k)
@@ -617,7 +633,7 @@ class App:
 
         # Strategy
         self.strategy_box = ttk.LabelFrame(self.controls_panel, text="温度策略", padding=8)
-        self.strategy_box.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        self.strategy_box.grid(row=1, column=0, sticky="ew", pady=(0, 12))
         self.strategy_var = tk.StringVar(value=self.config["strategy"])
         self._strategy_labels = {label: key for key, label in STRATEGIES}
         self._strategy_keys = {key: label for key, label in STRATEGIES}
@@ -631,7 +647,7 @@ class App:
 
         # Manual mode
         self.manual_box = ttk.LabelFrame(self.controls_panel, text="手动模式", padding=8)
-        self.manual_box.grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        self.manual_box.grid(row=2, column=0, sticky="ew", pady=(0, 12))
         self.manual_var = tk.BooleanVar(value=bool(self.config.get("manual_enabled", False)))
         ttk.Checkbutton(self.manual_box, text="锁定转速",
                         variable=self.manual_var, command=self._on_manual_toggle,
@@ -648,7 +664,7 @@ class App:
 
         # History range
         self.range_box = ttk.LabelFrame(self.controls_panel, text="历史范围（分钟）", padding=8)
-        self.range_box.grid(row=3, column=0, sticky="ew")
+        self.range_box.grid(row=3, column=0, sticky="ew", pady=(0, 12))
         self.time_entry_var = tk.StringVar(value=str(self.config.get("time_entry", "5")))
         ttk.Entry(self.range_box, textvariable=self.time_entry_var).pack(fill=tk.X)
 
@@ -684,8 +700,14 @@ class App:
         p = self.palette
         self.fig.patch.set_facecolor(p["bg"])
         self.ax.set_facecolor(p["bg"])
-        for spine in self.ax.spines.values():
-            spine.set_color(p["fg"])
+        for name, spine in self.ax.spines.items():
+            if name in ("top", "right"):
+                spine.set_visible(False)
+            else:
+                spine.set_visible(True)
+                spine.set_color(p["fg"])
+                spine.set_linewidth(0.5)
+                spine.set_alpha(0.7)
         self.ax.tick_params(colors=p["fg"])
         self.canvas.draw_idle()
 
@@ -779,10 +801,16 @@ class App:
         self.ax.plot(times, gpu_temps, label='GPU 温度', color=p["gpu"])
         self.ax.plot(times, ts, label='加权温度', color=p["t"])
         self.ax.plot(times, speeds, label='风扇速度', color=p["speed"])
-        for spine in self.ax.spines.values():
-            spine.set_color(p["fg"])
+        for name, spine in self.ax.spines.items():
+            if name in ("top", "right"):
+                spine.set_visible(False)
+            else:
+                spine.set_visible(True)
+                spine.set_color(p["fg"])
+                spine.set_linewidth(0.5)
+                spine.set_alpha(0.7)
         self.ax.tick_params(colors=p["fg"])
-        self.ax.grid(True, alpha=0.3, color=p["grid"])
+        self.ax.grid(True, alpha=0.15, color=p["grid"], linestyle='--')
         kwargs = {"fontproperties": self.font_prop} if self.font_prop else {}
         self.ax.set_xlabel('时间', color=p["fg"], **kwargs)
         self.ax.set_ylabel('数值', color=p["fg"], **kwargs)
