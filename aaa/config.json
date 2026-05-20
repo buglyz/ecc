@@ -1,0 +1,30 @@
+{
+  "curve": [
+    [
+      40,
+      40
+    ],
+    [
+      55,
+      60
+    ],
+    [
+      65,
+      80
+    ],
+    [
+      75,
+      95
+    ],
+    [
+      85,
+      100
+    ]
+  ],
+  "strategy": "max",
+  "theme": "light",
+  "time_entry": "5",
+  "minimize": 1,
+  "manual_enabled": false,
+  "manual_speed": 50
+}
