@@ -399,21 +399,21 @@ class StatusBar(ttk.Frame):
     """Top bar with four large numeric readouts. The fan tile also has a progress bar."""
 
     def __init__(self, master, font_family="Segoe UI"):
-        super().__init__(master, padding=(10, 10))
+        super().__init__(master, padding=(6, 6))
         self._tiles = {}
         labels = [("cpu", "CPU"), ("gpu", "GPU"), ("t", "加权温度"), ("speed", "风扇")]
         for i, (key, label) in enumerate(labels):
-            tile = ttk.Frame(self, padding=12, relief="flat")
-            tile.grid(row=0, column=i, padx=8, sticky="nsew")
-            ttk.Label(tile, text=label, font=(font_family, 11)).pack(anchor="center")
-            value = ttk.Label(tile, text="--", font=(font_family, 28, "bold"))
-            value.pack(pady=(4, 0), anchor="center")
+            tile = ttk.Frame(self, padding=8, relief="flat")
+            tile.grid(row=0, column=i, padx=5, sticky="nsew")
+            ttk.Label(tile, text=label, font=(font_family, 10)).pack(anchor="center")
+            value = ttk.Label(tile, text="--", font=(font_family, 22, "bold"))
+            value.pack(pady=(2, 0), anchor="center")
             self._tiles[key] = value
             if key == "speed":
                 self._fan_bar = ttk.Progressbar(
-                    tile, length=160, maximum=100, mode="determinate"
+                    tile, length=130, maximum=100, mode="determinate"
                 )
-                self._fan_bar.pack(fill=tk.X, pady=(8, 2))
+                self._fan_bar.pack(fill=tk.X, pady=(6, 1))
         for i in range(4):
             self.grid_columnconfigure(i, weight=1, uniform="tile")
 
@@ -527,8 +527,8 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("风扇控制器")
-        self.root.geometry("1320x860")
-        self.root.minsize(1100, 720)
+        self.root.geometry("1380x900")
+        self.root.minsize(1220, 780)
 
         self.config = load_config()
         self._tray_icon = None
@@ -560,60 +560,61 @@ class App:
         self.root.grid_columnconfigure(0, weight=1)
 
         self.status_bar = StatusBar(self.root)
-        self.status_bar.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 5))
+        self.status_bar.grid(row=0, column=0, sticky="ew", padx=15, pady=(10, 4))
 
         middle = ttk.Frame(self.root)
-        middle.grid(row=1, column=0, sticky="nsew", padx=15, pady=5)
+        middle.grid(row=1, column=0, sticky="nsew", padx=15, pady=4)
         middle.grid_rowconfigure(0, weight=1)
         middle.grid_columnconfigure(0, weight=1)
-        middle.grid_columnconfigure(1, weight=0, minsize=320)
+        middle.grid_columnconfigure(1, weight=0, minsize=350)
 
         self._build_chart_area(middle)
         self._build_controls_panel(middle)
         self._build_curve_section(self.root)
 
     def _build_chart_area(self, parent):
-        chart_box = ttk.LabelFrame(parent, text="实时监控", padding=10)
-        chart_box.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        self.fig, self.ax = plt.subplots(figsize=(8, 4.5))
-        self.fig.subplots_adjust(left=0.08, right=0.97, top=0.93, bottom=0.16)
+        chart_box = ttk.LabelFrame(parent, text="实时监控", padding=8)
+        chart_box.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        self.fig, self.ax = plt.subplots(figsize=(6.5, 3.6))
+        self.fig.subplots_adjust(left=0.11, right=0.96, top=0.9, bottom=0.2)
         self.canvas = FigureCanvasTkAgg(self.fig, master=chart_box)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self._apply_chart_palette()
 
     def _build_controls_panel(self, parent):
-        panel = ttk.Frame(parent)
-        panel.grid(row=0, column=1, sticky="ns")
+        panel = ttk.Frame(parent, width=350)
+        panel.grid(row=0, column=1, sticky="n")
+        panel.grid_propagate(False)
 
         # Preset
-        preset_box = ttk.LabelFrame(panel, text="预设方案", padding=10)
-        preset_box.pack(fill=tk.X, pady=(0, 10))
+        preset_box = ttk.LabelFrame(panel, text="预设方案", padding=8)
+        preset_box.pack(fill=tk.X, pady=(0, 8))
         for key, label, _curve, _strategy in PRESETS:
             ttk.Button(preset_box, text=label,
                        command=lambda k=key: self._apply_preset(k)
                        ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
 
         # Strategy
-        strategy_box = ttk.LabelFrame(panel, text="温度策略", padding=10)
-        strategy_box.pack(fill=tk.X, pady=(0, 10))
+        strategy_box = ttk.LabelFrame(panel, text="温度策略", padding=8)
+        strategy_box.pack(fill=tk.X, pady=(0, 8))
         self.strategy_var = tk.StringVar(value=self.config["strategy"])
         self._strategy_labels = {label: key for key, label in STRATEGIES}
         self._strategy_keys = {key: label for key, label in STRATEGIES}
         self.strategy_combo = ttk.Combobox(
             strategy_box, textvariable=self.strategy_var, state="readonly",
-            values=[label for _, label in STRATEGIES], width=28,
+            values=[label for _, label in STRATEGIES], width=26,
         )
         self.strategy_combo.set(self._strategy_keys.get(self.config["strategy"], STRATEGIES[0][1]))
         self.strategy_combo.bind("<<ComboboxSelected>>", self._on_strategy_change)
         self.strategy_combo.pack(fill=tk.X)
 
         # Manual mode
-        manual_box = ttk.LabelFrame(panel, text="手动模式", padding=10)
-        manual_box.pack(fill=tk.X, pady=(0, 10))
+        manual_box = ttk.LabelFrame(panel, text="手动模式", padding=8)
+        manual_box.pack(fill=tk.X, pady=(0, 8))
         self.manual_var = tk.BooleanVar(value=bool(self.config.get("manual_enabled", False)))
         ttk.Checkbutton(manual_box, text="锁定转速",
                         variable=self.manual_var, command=self._on_manual_toggle,
-                        ).pack(anchor="w", pady=(0, 4))
+                        ).pack(anchor="w", pady=(0, 3))
         self.manual_speed_var = tk.IntVar(value=int(self.config.get("manual_speed", 50)))
         self.manual_value_label = ttk.Label(manual_box, text=f"{self.manual_speed_var.get()} %")
         self.manual_value_label.pack(anchor="w")
@@ -621,18 +622,18 @@ class App:
             manual_box, from_=0, to=100, orient=tk.HORIZONTAL,
             variable=self.manual_speed_var, command=self._on_manual_slide,
         )
-        self.manual_slider.pack(fill=tk.X)
+        self.manual_slider.pack(fill=tk.X, pady=(3, 0))
         self._sync_manual_controls()
 
         # History range
-        range_box = ttk.LabelFrame(panel, text="历史范围（分钟）", padding=10)
-        range_box.pack(fill=tk.X, pady=(0, 10))
+        range_box = ttk.LabelFrame(panel, text="历史范围（分钟）", padding=8)
+        range_box.pack(fill=tk.X, pady=(0, 8))
         self.time_entry_var = tk.StringVar(value=str(self.config.get("time_entry", "5")))
         ttk.Entry(range_box, textvariable=self.time_entry_var).pack(fill=tk.X)
 
         # Actions
-        action_box = ttk.LabelFrame(panel, text="操作", padding=10)
-        action_box.pack(fill=tk.X)
+        action_box = ttk.LabelFrame(panel, text="操作", padding=8)
+        action_box.pack(fill=tk.X, side=tk.BOTTOM)
         ttk.Button(action_box, text="切换主题", command=self.toggle_theme
                    ).pack(fill=tk.X, pady=2)
         ttk.Button(action_box, text="最小化到托盘", command=self.minimize_to_tray
