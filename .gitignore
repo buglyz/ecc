@@ -1,0 +1,20 @@
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 构建产物 / 缓存
+build/FanController/
+dist/
+FanController/
+*.egg-info/
+
+# Go 编译产物（可从源码重新编译，不入库）
+/fan-controller.exe
+
+.claude/
+.DS_Store

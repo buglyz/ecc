@@ -1,0 +1,228 @@
+package sensors
+
+import (
+	"bufio"
+	"encoding/json"
+	"errors"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/buglyz/ecc/internal/controller"
+	"github.com/buglyz/ecc/internal/process"
+)
+
+const readTimeout = 5 * time.Second
+const closeTimeout = 2 * time.Second
+
+type PowerShellReader struct {
+	DLLPath    string
+	StateDir   string
+	Logger     *log.Logger
+	mu         sync.Mutex
+	cmd        *exec.Cmd
+	stdin      *bufio.Writer
+	stdout     *bufio.Reader
+	stdinPipe  anyWriteCloser
+	stdoutPipe io.Closer
+}
+
+type anyWriteCloser interface {
+	Write([]byte) (int, error)
+	Close() error
+}
+
+type tempPayload struct {
+	CPU *float64 `json:"cpu"`
+	GPU *float64 `json:"gpu"`
+}
+
+func (r *PowerShellReader) Read() controller.Temps {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.Logger == nil {
+		r.Logger = log.Default()
+	}
+	if r.cmd == nil {
+		if err := r.startLocked(); err != nil {
+			r.Logger.Printf("温度读取助手启动失败: %v", err)
+			return controller.Temps{}
+		}
+	}
+	if _, err := r.stdin.WriteString("read\n"); err != nil {
+		r.Logger.Printf("温度读取请求失败: %v", err)
+		r.resetLocked()
+		return controller.Temps{}
+	}
+	if err := r.stdin.Flush(); err != nil {
+		r.Logger.Printf("温度读取请求刷新失败: %v", err)
+		r.resetLocked()
+		return controller.Temps{}
+	}
+
+	stdout := r.stdout
+	lineCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		line, err := stdout.ReadString('\n')
+		if err != nil {
+			errCh <- err
+			return
+		}
+		lineCh <- line
+	}()
+
+	var line string
+	select {
+	case line = <-lineCh:
+	case err := <-errCh:
+		r.Logger.Printf("温度读取响应失败: %v", err)
+		r.resetLocked()
+		return controller.Temps{}
+	case <-time.After(readTimeout):
+		r.Logger.Printf("温度读取响应超时")
+		r.resetLocked()
+		return controller.Temps{}
+	}
+	var payload tempPayload
+	if err := json.Unmarshal([]byte(line), &payload); err != nil {
+		r.Logger.Printf("温度读取响应解析失败: %v", err)
+		return controller.Temps{}
+	}
+	return controller.Temps{CPU: payload.CPU, GPU: payload.GPU}
+}
+
+func (r *PowerShellReader) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.cmd == nil {
+		return nil
+	}
+	_, _ = r.stdin.WriteString("quit\n")
+	_ = r.stdin.Flush()
+	return r.stopLocked(false, closeTimeout)
+}
+
+func (r *PowerShellReader) startLocked() error {
+	if err := os.MkdirAll(r.StateDir, 0o755); err != nil {
+		return err
+	}
+	scriptPath := filepath.Join(r.StateDir, "lhm-reader.ps1")
+	if err := os.WriteFile(scriptPath, []byte(powerShellScript), 0o600); err != nil {
+		return err
+	}
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath, "-DllPath", r.DLLPath)
+	cmd.SysProcAttr = process.HiddenSysProcAttr()
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	r.cmd = cmd
+	r.stdinPipe = stdinPipe
+	r.stdoutPipe = stdoutPipe
+	r.stdin = bufio.NewWriter(stdinPipe)
+	r.stdout = bufio.NewReader(stdoutPipe)
+	return nil
+}
+
+func (r *PowerShellReader) resetLocked() {
+	_ = r.stopLocked(true, closeTimeout)
+}
+
+func (r *PowerShellReader) stopLocked(kill bool, timeout time.Duration) error {
+	cmd := r.cmd
+	if cmd == nil {
+		r.clearLocked()
+		return nil
+	}
+	if r.stdinPipe != nil {
+		_ = r.stdinPipe.Close()
+	}
+	if r.stdoutPipe != nil {
+		_ = r.stdoutPipe.Close()
+	}
+	if kill && cmd.Process != nil {
+		_ = cmd.Process.Kill()
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		r.clearLocked()
+		return err
+	case <-time.After(timeout):
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		select {
+		case err := <-done:
+			r.clearLocked()
+			if err != nil {
+				return errors.Join(errors.New("temperature helper close timeout"), err)
+			}
+			return errors.New("temperature helper close timeout")
+		case <-time.After(time.Second):
+			r.clearLocked()
+			return errors.New("temperature helper close timeout")
+		}
+	}
+}
+
+func (r *PowerShellReader) clearLocked() {
+	r.cmd = nil
+	r.stdin = nil
+	r.stdout = nil
+	r.stdinPipe = nil
+	r.stdoutPipe = nil
+}
+
+const powerShellScript = `param([string]$DllPath)
+$ErrorActionPreference = "Stop"
+Add-Type -Path $DllPath
+$computer = [LibreHardwareMonitor.Hardware.Computer]::new()
+$computer.IsCpuEnabled = $true
+$computer.IsGpuEnabled = $true
+$computer.Open()
+function Read-Temps($items, $kind) {
+  $matched = @($items | Where-Object { $_.HardwareType.ToString().ToLowerInvariant().Contains($kind) })
+  if ($matched.Count -eq 0) { return @() }
+  foreach ($item in $matched) {
+    $item.Update()
+    foreach ($sub in @($item.SubHardware)) { $sub.Update() }
+    $temps = @($item.Sensors | Where-Object { $_.SensorType -eq [LibreHardwareMonitor.Hardware.SensorType]::Temperature -and $null -ne $_.Value } | ForEach-Object { [double]$_.Value })
+    if ($temps.Count -gt 0) { return $temps }
+  }
+  return @()
+}
+try {
+  while (($line = [Console]::In.ReadLine()) -ne $null) {
+    if ($line -eq "quit") { break }
+    try {
+      $hardware = @($computer.Hardware)
+      $cpuTemps = Read-Temps $hardware "cpu"
+      $gpuTemps = Read-Temps $hardware "gpu"
+      $cpu = $null
+      $gpu = $null
+      if ($cpuTemps.Count -ge 2) { $cpu = $cpuTemps[$cpuTemps.Count - 2] } elseif ($cpuTemps.Count -eq 1) { $cpu = $cpuTemps[0] }
+      if ($gpuTemps.Count -gt 0) { $gpu = $gpuTemps[0] }
+      @{cpu=$cpu; gpu=$gpu} | ConvertTo-Json -Compress
+    } catch {
+      '{"cpu":null,"gpu":null}'
+    }
+  }
+} finally {
+  $computer.Close()
+}
+`
