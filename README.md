@@ -90,9 +90,7 @@ internal/
 
 - [ ] **拆 `pickle.go`** — 将 `config.go` 中 ~500 行 pickle 解析器独立为 `internal/config/pickle.go`，`config.go` 只保留配置业务逻辑
 - [ ] **前端抽离** — 将 `dashboard.go` 内联的 CSS/HTML/JS 迁移到 `web/` 目录，通过 `go:embed` 嵌入，`dashboard.go` 只留 HTTP handler
-- [ ] **统一入口目录** — `cmd/fan-controller/` 重命名为 `cmd/ecc/`，与项目名一致
-- [ ] **DLL 入 LFS** — `assets/` 下的二进制文件（DLL、exe）改用 Git LFS 或 Release Assets 管理，不污染仓库体积
-- [ ] **API 认证** — `/api/*` 端点加 CSRF 防护（如 origin 校验或 token），防止浏览器跨站请求篡改风扇配置
+- [ ] **API 禁止跨域** — `/api/*` 端点校验 `Origin`/`Host` 头，拒绝非 localhost 来源的请求
 - [ ] **Google Fonts 本地化** — 将外链字体下载到 `web/assets/` 本地引用，离线场景 UI 不崩
 - [ ] **轮询间隔可配置** — 将 `time.After(time.Second)` 硬编码改为可配置的 `--interval` 参数
 - [ ] **font 渲染测试** — 为 `tray/font_windows.go` 的 `renderText16` / glyphs 补跨平台可测的纯计算单元测试
