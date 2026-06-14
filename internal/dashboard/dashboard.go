@@ -439,11 +439,13 @@ h3 { margin: 0 0 16px; font-size: 15px; font-weight: 700; color: var(--text); te
 .gauge { height: 8px; border-radius: 4px; background: var(--surface2); margin-top: 16px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
 .gauge > i { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, var(--cool), var(--warm), var(--hot)); transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 10px rgba(255,255,255,0.2); }
 
-.layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
+.layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; align-items: stretch; }
+.layout > div { display: flex; flex-direction: column; gap: 24px; }
+.layout > div > .card:last-child { flex-grow: 1; display: flex; flex-direction: column; }
 canvas#chart { width: 100%; height: auto; aspect-ratio: 860/340; display: block; margin-top: 10px; }
-canvas#curveCanvas { width: 100%; height: auto; aspect-ratio: 1100/264; cursor: crosshair; display: block; touch-action: none; margin-top: 16px; border-radius: var(--radius-md); }
+canvas#curveCanvas { width: 100%; height: auto; aspect-ratio: 1100/264; cursor: crosshair; display: block; touch-action: none; margin-top: auto; margin-bottom: auto; border-radius: var(--radius-md); }
 
-.controls { display: grid; gap: 24px; align-content: start; }
+.controls { /* moved to .layout > div */ }
 .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -527,7 +529,7 @@ input[type=range]:disabled { opacity: 0.5; }
     <div class="card stat"><div class="label">风扇输出</div><div class="value" id="speed">--<span class="unit">%</span></div><div class="gauge"><i id="speedBar"></i></div></div>
   </section>
   <section class="layout">
-    <div class="left-col" style="display:flex; flex-direction:column; gap:24px;">
+    <div class="left-col">
       <div class="card">
         <div class="curve-head" style="margin-bottom:8px;"><h3 style="margin:0">实时温度监控</h3><span class="muted" id="writeAgo"></span></div>
         <p class="muted" style="margin-top:-6px; margin-bottom:4px;">展示近期 CPU、GPU 温度及风扇响应状态。</p>
