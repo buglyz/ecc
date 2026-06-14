@@ -527,9 +527,15 @@ input[type=range]:disabled { opacity: 0.5; }
     <div class="card stat"><div class="label">风扇输出</div><div class="value" id="speed">--<span class="unit">%</span></div><div class="gauge"><i id="speedBar"></i></div></div>
   </section>
   <section class="layout">
-    <div class="card">
-      <canvas id="chart" width="860" height="340"></canvas>
-      <p class="modeline"><span>模式：<b id="mode">--</b></span><span id="writeAgo"></span></p>
+    <div class="left-col" style="display:flex; flex-direction:column; gap:24px;">
+      <div class="card">
+        <canvas id="chart" width="860" height="340"></canvas>
+        <p class="modeline"><span>模式：<b id="mode">--</b></span><span id="writeAgo"></span></p>
+      </div>
+      <div class="card">
+        <div class="curve-head"><h3 style="margin:0">风扇曲线（拖动控制点）</h3><span class="muted" id="curveValues"></span></div>
+        <canvas id="curveCanvas" width="1100" height="264" style="margin-top:10px"></canvas>
+      </div>
     </div>
     <div class="controls">
       <div class="card"><div class="curve-head" style="margin-bottom:10px"><h3 style="margin:0">预设挡位</h3><button class="chip" id="addPreset">+ 新建挡位</button></div><div class="preset-list" id="presetList"></div></div>
@@ -550,10 +556,6 @@ input[type=range]:disabled { opacity: 0.5; }
         <div class="row" style="margin-top:9px"><input id="minutes" type="number" min="1" max="480" style="width:90px"><span class="muted">分钟（1-480）</span></div>
       </div>
     </div>
-  </section>
-  <section class="card" style="margin-top:0">
-    <div class="curve-head"><h3 style="margin:0">风扇曲线（拖动控制点）</h3><span class="muted" id="curveValues"></span></div>
-    <canvas id="curveCanvas" width="1100" height="264" style="margin-top:10px"></canvas>
   </section>
 </main>
 <script>
