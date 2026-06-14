@@ -351,99 +351,161 @@ var indexTemplate = template.Must(template.New("index").Parse(`<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>风扇控制器</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#eef2f8;--bg2:#f8fafd;--surface:#ffffff;--surface2:#f4f7fb;--border:#dde4ef;
-  --text:#16203a;--muted:#6b7689;--accent:#2563eb;--accent-soft:#dbe7ff;
-  --cool:#1f9d57;--warm:#e8920c;--hot:#e23b3b;--shadow:0 6px 24px rgba(20,40,80,.07);
+:root {
+  --bg-top: #f1f5f9;
+  --bg-bottom: #e2e8f0;
+  --surface: rgba(255, 255, 255, 0.75);
+  --surface-hover: rgba(255, 255, 255, 0.95);
+  --surface2: rgba(241, 245, 249, 0.8);
+  --border: rgba(203, 213, 225, 0.7);
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-soft: rgba(59, 130, 246, 0.15);
+  --cool: #10b981;
+  --warm: #f59e0b;
+  --hot: #ef4444;
+  --shadow: 0 10px 30px -10px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.05);
+  --glass-blur: blur(16px);
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
 }
-body.dark{
-  --bg:#0f141c;--bg2:#141b26;--surface:#1a2230;--surface2:#222c3c;--border:#2c374a;
-  --text:#e6ebf2;--muted:#94a1b6;--accent:#5b9dff;--accent-soft:#23304a;
-  --cool:#37c97a;--warm:#f2ad3c;--hot:#ff6464;--shadow:0 6px 28px rgba(0,0,0,.35);
+body.dark {
+  --bg-top: #0f172a;
+  --bg-bottom: #020617;
+  --surface: rgba(30, 41, 59, 0.65);
+  --surface-hover: rgba(30, 41, 59, 0.85);
+  --surface2: rgba(15, 23, 42, 0.65);
+  --border: rgba(51, 65, 85, 0.7);
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --accent-soft: rgba(96, 165, 250, 0.2);
+  --cool: #34d399;
+  --warm: #fbbf24;
+  --hot: #f87171;
+  --shadow: 0 20px 40px -10px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.3);
 }
-*{box-sizing:border-box}
-html,body{margin:0}
-body{font-family:"Microsoft YaHei",Segoe UI,system-ui,sans-serif;color:var(--text);
-  background:linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh;padding:22px;
-  transition:background .3s,color .3s}
-main{max-width:1200px;margin:0 auto}
-h1{font-size:23px;margin:0;letter-spacing:.5px}
-h3{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--muted);text-transform:none}
-.hero{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:12px}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--cool);box-shadow:0 0 0 0 rgba(31,157,87,.5);
-  transition:background .3s}
-.dot.off{background:var(--hot)}
-.dot.live{animation:pulse 2s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(31,157,87,.45)}70%{box-shadow:0 0 0 7px rgba(31,157,87,0)}100%{box-shadow:0 0 0 0 rgba(31,157,87,0)}}
-.sub{color:var(--muted);font-size:12.5px;margin:3px 0 0}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:17px;
-  box-shadow:var(--shadow);transition:background .3s,border-color .3s}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
-.stat{position:relative;overflow:hidden}
-.stat .label{color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:6px}
-.stat .value{font-size:36px;font-weight:750;margin-top:4px;line-height:1.05;font-variant-numeric:tabular-nums}
-.stat .unit{font-size:16px;font-weight:600;color:var(--muted);margin-left:3px}
-.stat .extra{font-size:11.5px;color:var(--muted);margin-top:5px;min-height:14px}
-.cool{color:var(--cool)}.warm{color:var(--warm)}.hot{color:var(--hot)}
-.gauge{height:7px;border-radius:6px;background:var(--surface2);margin-top:11px;overflow:hidden}
-.gauge>i{display:block;height:100%;width:0;border-radius:6px;
-  background:linear-gradient(90deg,var(--cool),var(--warm),var(--hot));transition:width .5s ease}
-.layout{display:grid;grid-template-columns:1.55fr .9fr;gap:13px;margin-top:13px}
-canvas#chart{width:100%;height:340px;display:block}
-canvas#curveCanvas{width:100%;height:264px;cursor:crosshair;display:block;touch-action:none}
-.controls{display:grid;gap:13px;align-content:start}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.chip-row{display:flex;gap:7px;flex-wrap:wrap}
-button,select,input[type=number]{font:inherit;border-radius:10px;border:1px solid var(--border);
-  padding:8px 12px;background:var(--surface);color:var(--text);transition:all .18s}
-button{cursor:pointer;background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
-button:hover{filter:brightness(1.07)}
-button:active{transform:translateY(1px)}
-button.secondary{background:var(--surface);color:var(--text)}
-button.secondary:hover{border-color:var(--accent);color:var(--accent)}
-button.chip{background:var(--surface);color:var(--text);font-weight:500;padding:7px 13px}
-button.chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-select{width:100%;cursor:pointer}
-.modeline{color:var(--muted);font-size:12.5px;margin:12px 0 0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.modeline b{color:var(--text);font-weight:600}
-.switch{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;font-size:13.5px}
-.switch input{position:absolute;opacity:0}
-.track{width:40px;height:22px;border-radius:22px;background:var(--surface2);border:1px solid var(--border);
-  position:relative;transition:background .2s}
-.track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
-  background:var(--muted);transition:transform .2s,background .2s}
-.switch input:checked+.track{background:var(--accent);border-color:var(--accent)}
-.switch input:checked+.track::after{transform:translateX(18px);background:#fff}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:7px;border-radius:6px;
-  background:var(--surface2);margin:14px 0 6px;outline:none}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;
-  background:var(--accent);cursor:pointer;border:3px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.25)}
-input[type=range]:disabled{opacity:.45}
-.manualval{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
-.curve-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.muted{color:var(--muted);font-size:12.5px}
-.preset-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.preset-row button{padding:9px 0}
-.preset-list{display:flex;flex-direction:column;gap:7px}
-.preset-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);
-  border-radius:11px;background:var(--surface);transition:border-color .18s,background .18s}
-.preset-item.active{border-color:var(--accent);background:var(--accent-soft)}
-.preset-item .pname{flex:1;font-weight:600;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:7px;min-width:0}
-.preset-item .pname span.txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.preset-item .badge{font-size:10.5px;font-weight:700;color:#fff;background:var(--warm);
-  padding:1px 7px;border-radius:20px;flex:none}
-.preset-item .pacts{display:flex;gap:5px;flex:none}
-.preset-item .pacts button{padding:5px 10px;font-size:12px;font-weight:600}
-.preset-item .pacts button.ghost{background:transparent;color:var(--muted);border-color:var(--border)}
-.preset-item .pacts button.ghost:hover{color:var(--accent);border-color:var(--accent)}
-.preset-item .pacts button.danger{background:transparent;color:var(--hot);border-color:var(--border)}
-.preset-item .pacts button.danger:hover{border-color:var(--hot)}
-.preset-foot{display:flex;gap:7px;margin-top:9px}
-.preset-foot input{flex:1;min-width:0}
-@media(max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}.hero{align-items:flex-start}}
-@media(max-width:520px){.grid{grid-template-columns:1fr}}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding: 30px 20px;
+  transition: background 0.5s ease, color 0.5s ease;
+}
+main { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+h1 { font-size: 28px; font-weight: 800; margin: 0; letter-spacing: -0.5px; background: linear-gradient(to right, var(--text), var(--muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+h3 { margin: 0 0 16px; font-size: 15px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
+
+.hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.brand { display: flex; align-items: center; gap: 16px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--cool); box-shadow: 0 0 12px var(--cool); transition: background 0.3s, box-shadow 0.3s; }
+.dot.off { background: var(--hot); box-shadow: 0 0 12px var(--hot); }
+.dot.live { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(1.15); } }
+.sub { color: var(--muted); font-size: 14px; margin: 4px 0 0; font-weight: 500; }
+
+.card {
+  background: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+.card:hover { transform: translateY(-3px); box-shadow: 0 15px 35px -10px rgba(0,0,0,0.15); background: var(--surface-hover); }
+
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.stat { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+.stat .label { color: var(--muted); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat .value { font-size: 42px; font-weight: 800; margin-top: 8px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+.stat .unit { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 4px; vertical-align: super; }
+.stat .extra { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 15px; font-weight: 500; }
+.cool { color: var(--cool); text-shadow: 0 0 15px rgba(16,185,129,0.3); }
+.warm { color: var(--warm); text-shadow: 0 0 15px rgba(245,158,11,0.3); }
+.hot { color: var(--hot); text-shadow: 0 0 15px rgba(239,68,68,0.3); }
+
+.gauge { height: 8px; border-radius: 4px; background: var(--surface2); margin-top: 16px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+.gauge > i { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, var(--cool), var(--warm), var(--hot)); transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+
+.layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
+canvas#chart { width: 100%; height: 320px; display: block; margin-top: 10px; }
+canvas#curveCanvas { width: 100%; height: 260px; cursor: crosshair; display: block; touch-action: none; margin-top: 16px; border-radius: var(--radius-md); }
+
+.controls { display: grid; gap: 24px; align-content: start; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+button, select, input[type=number] {
+  font-family: inherit; font-size: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  background: var(--surface2);
+  color: var(--text);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+button { cursor: pointer; background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+button:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); }
+button:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
+
+button.secondary { background: var(--surface); color: var(--text); border-color: var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+button.secondary:hover { border-color: var(--accent); color: var(--accent); background: var(--surface-hover); }
+
+button.chip { background: var(--surface); color: var(--text); font-weight: 600; padding: 8px 14px; border-radius: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+button.chip.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+
+select { width: 100%; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 40px; font-weight: 500; }
+select:focus, input[type=number]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.modeline { color: var(--muted); font-size: 13px; margin: 16px 0 0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-weight: 500; padding-top: 16px; border-top: 1px solid var(--border); }
+.modeline b { color: var(--text); font-weight: 700; background: var(--surface2); padding: 4px 10px; border-radius: 8px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); }
+
+.switch { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; font-size: 14px; font-weight: 600; }
+.switch input { position: absolute; opacity: 0; }
+.track { width: 48px; height: 26px; border-radius: 26px; background: var(--border); position: relative; transition: background 0.3s; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+.track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+.switch input:checked + .track { background: var(--accent); }
+.switch input:checked + .track::after { transform: translateX(22px); }
+
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 4px; background: var(--border); margin: 24px 0 12px; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 4px solid var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: transform 0.1s, box-shadow 0.1s; }
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5); }
+input[type=range]:disabled { opacity: 0.5; }
+
+.manualval { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); letter-spacing: -0.5px; }
+.curve-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.muted { color: var(--muted); font-size: 13px; font-weight: 500; }
+
+.preset-list { display: flex; flex-direction: column; gap: 10px; }
+.preset-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.preset-item:hover { background: var(--surface); transform: translateX(6px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: var(--accent-soft); }
+.preset-item.active { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.preset-item .pname { flex: 1; font-weight: 600; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.preset-item .pname span.txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset-item .badge { font-size: 11px; font-weight: 700; color: #fff; background: var(--warm); padding: 2px 8px; border-radius: 12px; flex: none; box-shadow: 0 2px 4px rgba(245,158,11,0.3); }
+.preset-item .pacts { display: flex; gap: 6px; flex: none; opacity: 0; transition: opacity 0.2s, transform 0.2s; transform: translateX(10px); }
+.preset-item:hover .pacts, .preset-item.active .pacts { opacity: 1; transform: translateX(0); }
+.preset-item .pacts button { padding: 6px 12px; font-size: 12px; border-radius: 8px; box-shadow: none; font-weight: 600; }
+.preset-item .pacts button.ghost { background: transparent; color: var(--muted); border-color: var(--border); }
+.preset-item .pacts button.ghost:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); transform: none; box-shadow: none; }
+.preset-item .pacts button.danger { background: transparent; color: var(--hot); border-color: var(--border); }
+.preset-item .pacts button.danger:hover { color: #fff; background: var(--hot); border-color: var(--hot); box-shadow: 0 4px 12px rgba(239,68,68,0.3); transform: none; }
+
+@media(max-width: 980px) { .grid { grid-template-columns: repeat(2, 1fr); } .layout { grid-template-columns: 1fr; } }
+@media(max-width: 580px) { .grid { grid-template-columns: 1fr; } .card { padding: 20px; } .preset-item .pacts { opacity: 1; transform: none; } }
 </style>
 </head>
 <body>
@@ -489,7 +551,7 @@ input[type=range]:disabled{opacity:.45}
       </div>
     </div>
   </section>
-  <section class="card" style="margin-top:13px">
+  <section class="card" style="margin-top:0">
     <div class="curve-head"><h3 style="margin:0">风扇曲线（拖动控制点）</h3><span class="muted" id="curveValues"></span></div>
     <canvas id="curveCanvas" width="1100" height="264" style="margin-top:10px"></canvas>
   </section>
@@ -501,15 +563,14 @@ function setTemp(id,extraId,v,stats){const el=$(id);el.className='value '+tempCl
 function statsFor(history,key){let mn=Infinity,mx=-Infinity,sum=0,n=0;history.forEach(p=>{const v=p[key];if(v==null)return;mn=Math.min(mn,v);mx=Math.max(mx,v);sum+=v;n++});if(!n)return '';return '窗口 均'+Math.round(sum/n)+'° 峰'+Math.round(mx)+'°'}
 function relTime(iso){if(!iso)return '';const d=Date.parse(iso);if(isNaN(d))return '';const s=Math.max(0,Math.round((Date.now()-d)/1000));if(s<60)return s+' 秒前';if(s<3600)return Math.round(s/60)+' 分前';return Math.round(s/3600)+' 时前'}
 async function api(path,body){const res=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});if(!res.ok)throw new Error(await res.text());return res.json()}
-function draw(history){const c=$('chart'),x=c.getContext('2d'),w=c.width,h=c.height;const dark=document.body.classList.contains('dark');const fg=dark?'#94a1b6':'#6b7689';const grid=dark?'#2c374a':'#dde4ef';const padL=44,padR=12,padT=24,padB=30;x.clearRect(0,0,w,h);x.font='12px "Microsoft YaHei",Segoe UI,sans-serif';x.fillStyle=fg;x.strokeStyle=grid;x.lineWidth=1;for(let i=0;i<=5;i++){let v=i*20,y=h-padB-v/100*(h-padT-padB);x.beginPath();x.moveTo(padL,y);x.lineTo(w-padR,y);x.stroke();x.fillStyle=fg;x.textAlign='right';x.textBaseline='middle';x.fillText(v,padL-6,y)}x.textAlign='left';x.textBaseline='top';x.fillStyle=fg;x.fillText('°C / %',6,4);const cutoff=Date.now()-Number($('minutes').value||5)*60000;history=history.filter(p=>Date.parse(p.time)>=cutoff);if(!history.length){x.fillStyle=fg;x.textAlign='center';x.fillText('等待温度数据...',w/2,h/2);return}const t0=Date.parse(history[0].time),t1=Date.parse(history[history.length-1].time)||t0+1;function line(key,color,fill){x.strokeStyle=color;x.lineWidth=2;x.beginPath();let started=false,first=null,last=null;history.forEach(p=>{let v=p[key];if(v==null)return;let px=padL+(Date.parse(p.time)-t0)/Math.max(1,t1-t0)*(w-padL-padR),py=h-padB-v/100*(h-padT-padB);if(!started){x.moveTo(px,py);started=true;first=px}else{x.lineTo(px,py)}last=px});x.stroke();if(fill&&started){x.lineTo(last,h-padB);x.lineTo(first,h-padB);x.closePath();x.globalAlpha=.10;x.fillStyle=color;x.fill();x.globalAlpha=1}}line('speed','#2b8a3e',true);line('cpu','#e23b3b');line('gpu','#1864ab');line('target_temp','#e8920c');const ticks=4;for(let i=0;i<=ticks;i++){let ts=t0+(t1-t0)*i/ticks,px=padL+i*(w-padL-padR)/ticks;const d=new Date(ts);const label=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');x.fillStyle=fg;x.textAlign=i===0?'left':(i===ticks?'right':'center');x.textBaseline='top';x.fillText(label,px,h-padB+6)}const legend=[['CPU','#e23b3b'],['GPU','#1864ab'],['目标','#e8920c'],['风扇','#2b8a3e']];let lx=padL+8;legend.forEach(([label,color])=>{x.fillStyle=color;x.fillRect(lx,6,12,10);x.fillStyle=fg;x.textAlign='left';x.textBaseline='top';x.fillText(label,lx+16,6);lx+=16+x.measureText(label).width+14})}
-function drawCurve(){const c=$('curveCanvas');if(!c||!state)return;const x=c.getContext('2d'),w=c.width,h=c.height;const dark=document.body.classList.contains('dark');const fg=dark?'#94a1b6':'#6b7689';const grid=dark?'#2c374a':'#dde4ef';const accent=dark?'#5b9dff':'#2563eb';const padL=46,padR=14,padT=18,padB=30;x.clearRect(0,0,w,h);x.font='12px "Microsoft YaHei",Segoe UI,sans-serif';x.strokeStyle=grid;x.lineWidth=1;x.fillStyle=fg;for(let s=0;s<=10;s+=2){const v=s*10,y=h-padB-v/100*(h-padT-padB);x.beginPath();x.moveTo(padL,y);x.lineTo(w-padR,y);x.stroke();x.textAlign='right';x.textBaseline='middle';x.fillText(v+'%',padL-6,y)}for(let t=30;t<=100;t+=10){const px=padL+(t-30)/70*(w-padL-padR);x.beginPath();x.moveTo(px,padT);x.lineTo(px,h-padB);x.stroke();x.textAlign='center';x.textBaseline='top';x.fillText(t+'°',px,h-padB+6)}const cur=state.latest&&state.latest.target_temp;if(cur!=null){const px=padL+(Math.max(30,Math.min(100,cur))-30)/70*(w-padL-padR);x.strokeStyle=dark?'#f2ad3c':'#e8920c';x.setLineDash([4,4]);x.beginPath();x.moveTo(px,padT);x.lineTo(px,h-padB);x.stroke();x.setLineDash([])}const curve=state.config.curve;const pts=curve.map(p=>[padL+(p[0]-30)/70*(w-padL-padR),h-padB-p[1]/100*(h-padT-padB)]);x.strokeStyle=accent;x.lineWidth=2.5;x.beginPath();pts.forEach(([px,py],i)=>{if(i===0)x.moveTo(px,py);else x.lineTo(px,py)});x.stroke();pts.forEach(([px,py],i)=>{x.fillStyle=accent;x.beginPath();x.arc(px,py,7,0,Math.PI*2);x.fill();x.strokeStyle=dark?'#1a2230':'#fff';x.lineWidth=2;x.stroke();x.fillStyle=fg;x.font='11px "Microsoft YaHei",Segoe UI,sans-serif';x.textAlign='center';x.textBaseline='bottom';x.fillText(curve[i][0]+'°/'+curve[i][1]+'%',px,py-12)});const vals=$('curveValues');if(vals)vals.textContent=curve.map(p=>'('+p[0]+'°, '+p[1]+'%)').join(' · ')}
+function draw(history){const c=$('chart'),x=c.getContext('2d'),w=c.width,h=c.height;const dark=document.body.classList.contains('dark');const fg=dark?'#94a3b8':'#64748b';const grid=dark?'rgba(51, 65, 85, 0.5)':'rgba(203, 213, 225, 0.5)';const padL=44,padR=12,padT=24,padB=30;x.clearRect(0,0,w,h);x.font='500 12px "Inter", "Microsoft YaHei", sans-serif';x.fillStyle=fg;x.strokeStyle=grid;x.lineWidth=1;for(let i=0;i<=5;i++){let v=i*20,y=h-padB-v/100*(h-padT-padB);x.beginPath();x.moveTo(padL,y);x.lineTo(w-padR,y);x.stroke();x.fillStyle=fg;x.textAlign='right';x.textBaseline='middle';x.fillText(v,padL-8,y)}x.textAlign='left';x.textBaseline='top';x.fillStyle=fg;x.fillText('°C / %',6,4);const cutoff=Date.now()-Number($('minutes').value||5)*60000;history=history.filter(p=>Date.parse(p.time)>=cutoff);if(!history.length){x.fillStyle=fg;x.textAlign='center';x.fillText('等待温度数据...',w/2,h/2);return}const t0=Date.parse(history[0].time),t1=Date.parse(history[history.length-1].time)||t0+1;function line(key,color,fill){x.strokeStyle=color;x.lineWidth=3;x.lineJoin='round';x.beginPath();let started=false,first=null,last=null;history.forEach(p=>{let v=p[key];if(v==null)return;let px=padL+(Date.parse(p.time)-t0)/Math.max(1,t1-t0)*(w-padL-padR),py=h-padB-v/100*(h-padT-padB);if(!started){x.moveTo(px,py);started=true;first=px}else{x.lineTo(px,py)}last=px});x.stroke();if(fill&&started){x.lineTo(last,h-padB);x.lineTo(first,h-padB);x.closePath();const grad=x.createLinearGradient(0,padT,0,h-padB);grad.addColorStop(0,color.replace(')',', 0.2)').replace('rgb','rgba').replace('#2b8a3e','rgba(43,138,62,0.2)'));grad.addColorStop(1,color.replace(')',', 0)').replace('rgb','rgba').replace('#2b8a3e','rgba(43,138,62,0)'));x.fillStyle=grad;x.fill()}}line('speed','#10b981',true);line('cpu','#ef4444');line('gpu','#3b82f6');line('target_temp','#f59e0b');const ticks=4;for(let i=0;i<=ticks;i++){let ts=t0+(t1-t0)*i/ticks,px=padL+i*(w-padL-padR)/ticks;const d=new Date(ts);const label=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');x.fillStyle=fg;x.textAlign=i===0?'left':(i===ticks?'right':'center');x.textBaseline='top';x.fillText(label,px,h-padB+8)}const legend=[['CPU','#ef4444'],['GPU','#3b82f6'],['目标','#f59e0b'],['风扇','#10b981']];let lx=padL+8;legend.forEach(([label,color])=>{x.fillStyle=color;x.beginPath();x.roundRect(lx,6,12,12,3);x.fill();x.fillStyle=fg;x.textAlign='left';x.textBaseline='top';x.fillText(label,lx+18,6);lx+=18+x.measureText(label).width+16})}
+function drawCurve(){const c=$('curveCanvas');if(!c||!state)return;const x=c.getContext('2d'),w=c.width,h=c.height;const dark=document.body.classList.contains('dark');const fg=dark?'#94a3b8':'#64748b';const grid=dark?'rgba(51, 65, 85, 0.5)':'rgba(203, 213, 225, 0.5)';const accent=dark?'#60a5fa':'#3b82f6';const padL=46,padR=14,padT=18,padB=30;x.clearRect(0,0,w,h);x.font='500 12px "Inter", "Microsoft YaHei", sans-serif';x.strokeStyle=grid;x.lineWidth=1;x.fillStyle=fg;for(let s=0;s<=10;s+=2){const v=s*10,y=h-padB-v/100*(h-padT-padB);x.beginPath();x.moveTo(padL,y);x.lineTo(w-padR,y);x.stroke();x.textAlign='right';x.textBaseline='middle';x.fillText(v+'%',padL-8,y)}for(let t=30;t<=100;t+=10){const px=padL+(t-30)/70*(w-padL-padR);x.beginPath();x.moveTo(px,padT);x.lineTo(px,h-padB);x.stroke();x.textAlign='center';x.textBaseline='top';x.fillText(t+'°',px,h-padB+8)}const cur=state.latest&&state.latest.target_temp;if(cur!=null){const px=padL+(Math.max(30,Math.min(100,cur))-30)/70*(w-padL-padR);x.strokeStyle=dark?'#fbbf24':'#f59e0b';x.lineWidth=2;x.setLineDash([4,4]);x.beginPath();x.moveTo(px,padT);x.lineTo(px,h-padB);x.stroke();x.setLineDash([])}const curve=state.config.curve;const pts=curve.map(p=>[padL+(p[0]-30)/70*(w-padL-padR),h-padB-p[1]/100*(h-padT-padB)]);x.strokeStyle=accent;x.lineWidth=3;x.lineJoin='round';x.beginPath();pts.forEach(([px,py],i)=>{if(i===0)x.moveTo(px,py);else x.lineTo(px,py)});x.stroke();const grad=x.createLinearGradient(0,padT,0,h-padB);grad.addColorStop(0,accent.replace(')',', 0.3)').replace('rgb','rgba').replace('#3b82f6','rgba(59,130,246,0.3)').replace('#60a5fa','rgba(96,165,250,0.3)'));grad.addColorStop(1,accent.replace(')',', 0)').replace('rgb','rgba').replace('#3b82f6','rgba(59,130,246,0)').replace('#60a5fa','rgba(96,165,250,0)'));x.lineTo(pts[pts.length-1][0],h-padB);x.lineTo(pts[0][0],h-padB);x.closePath();x.fillStyle=grad;x.fill();pts.forEach(([px,py],i)=>{x.fillStyle=accent;x.beginPath();x.arc(px,py,8,0,Math.PI*2);x.fill();x.strokeStyle=dark?'#1e293b':'#ffffff';x.lineWidth=3;x.stroke();x.fillStyle=fg;x.font='600 11px "Inter", "Microsoft YaHei", sans-serif';x.textAlign='center';x.textBaseline='bottom';x.fillText(curve[i][0]+'°/'+curve[i][1]+'%',px,py-14)});const vals=$('curveValues');if(vals)vals.textContent=curve.map(p=>'('+p[0]+'°, '+p[1]+'%)').join(' · ')}
 function curveCoords(ev){const c=$('curveCanvas');const rect=c.getBoundingClientRect();const sx=c.width/rect.width,sy=c.height/rect.height;return{mx:(ev.clientX-rect.left)*sx,my:(ev.clientY-rect.top)*sy,w:c.width,h:c.height,padL:46,padR:14,padT:18,padB:30}}
 let curveDrag=null;
-function onCurveDown(ev){if(!state)return;const co=curveCoords(ev);const curve=state.config.curve;for(let i=0;i<curve.length;i++){const px=co.padL+(curve[i][0]-30)/70*(co.w-co.padL-co.padR),py=co.h-co.padB-curve[i][1]/100*(co.h-co.padT-co.padB);if(Math.hypot(co.mx-px,co.my-py)<=12){curveDrag={i};dirty=true;ev.preventDefault();break}}}
+function onCurveDown(ev){if(!state)return;const co=curveCoords(ev);const curve=state.config.curve;for(let i=0;i<curve.length;i++){const px=co.padL+(curve[i][0]-30)/70*(co.w-co.padL-co.padR),py=co.h-co.padB-curve[i][1]/100*(co.h-co.padT-co.padB);if(Math.hypot(co.mx-px,co.my-py)<=14){curveDrag={i};dirty=true;ev.preventDefault();break}}}
 function onCurveMove(ev){if(!curveDrag||!state)return;const co=curveCoords(ev);let t=30+(co.mx-co.padL)/(co.w-co.padL-co.padR)*70,s=(co.h-co.padB-co.my)/(co.h-co.padT-co.padB)*100;t=Math.max(30,Math.min(100,t));s=Math.max(0,Math.min(100,s));const curve=state.config.curve,i=curveDrag.i;if(i>0)t=Math.max(t,curve[i-1][0]+0.5);if(i<curve.length-1)t=Math.min(t,curve[i+1][0]-0.5);curve[i]=[Math.round(t*10)/10,Math.round(s*10)/10];drawCurve()}
 function onCurveUp(){if(curveDrag){curveDrag=null;save().catch(err=>{saving=false;console.error(err)})}}
 function render(s){const wasDirty=dirty||saving||curveDrag;
-  // dirty/拖动/保存期间保留本地未保存的工作状态，避免每秒轮询用服务器旧值覆盖正在编辑的曲线/策略。
   if(wasDirty&&state&&state.config){s.config.curve=state.config.curve;s.config.strategy=state.config.strategy}
   state=s;document.body.classList.toggle('dark',s.config.theme==='dark');
   setTemp('cpu','cpuExtra',s.latest.cpu,statsFor(s.history,'cpu'));
@@ -530,7 +591,6 @@ function presetAct(action,key){const body=action==='add'?{action,label:key}:{act
 let presetSig='';
 function renderPresets(s){const list=$('presetList');if(!list)return;const ps=s.config.presets||{};const active=s.config.active_preset;const modified=presetModified(s);
   const order=Object.keys(ps).sort((a,b)=>{const ba=BUILTIN[a]?0:1,bb=BUILTIN[b]?0:1;return ba!==bb?ba-bb:a<b?-1:1});
-  // 仅当结构（挡位集合/名称/激活项/修改态）变化时才重建 DOM，避免每秒轮询重绘并丢失点击。
   const sig=order.map(k=>k+':'+(ps[k].label||k)).join('|')+'#'+active+'#'+(modified?1:0);
   if(sig===presetSig)return;presetSig=sig;
   let html='';
