@@ -2,6 +2,10 @@
 
 笔记本 EC 风扇控制器，通过写入 EC 寄存器实现自定义风扇转速曲线。现已重构并搭载全新的现代化 Web UI。
 
+##预览
+![PixPin_2026-06-14_18-58-43.png](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMLai6J89hSBEUPxtFxgOsAAX-gFk9AAALGEGsbqjd4VWGbIgQZAy2qAQADAgADdwADPAQ.png)
+![PixPin_2026-06-14_18-58-40.png](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMJai6J77BSz8rw8Bt4twWfKI-JOY0AAsUQaxuqN3hViRKhQeE5-f4BAAMCAAN3AAM8BA.png)
+
 ## 🌟 核心特性
 
 - 🎨 **现代化玻璃态 Web UI**：采用 Fluent/Glassmorphism 设计美学，支持深色/浅色自适应主题切换及完美的响应式布局。
@@ -34,7 +38,7 @@
 双击 `fan-controller.exe`：
 1. 自动请求管理员权限（UAC 提示）
 2. 系统托盘出现图标
-3. 浏览器自动打开控制台
+3. 右键任务栏窗口打开webui
 
 ### 命令行参数
 
