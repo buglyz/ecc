@@ -1,0 +1,57 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Build
+        run: |
+          go build -ldflags="-s -w -H windowsgui" -o fan-controller.exe ./cmd/fan-controller/
+
+      - name: Package Release
+        run: |
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item -Path fan-controller.exe -Destination release/
+          Copy-Item -Path assets -Destination release/ -Recurse
+          Compress-Archive -Path release/* -DestinationPath ecc-windows-amd64.zip
+
+      - name: Generate Tag Name
+        id: tag_name
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_name.outputs.tag }}
+          name: Release ${{ steps.tag_name.outputs.tag }}
+          prerelease: ${{ steps.tag_name.outputs.is_release == 'false' }}
+          make_latest: ${{ steps.tag_name.outputs.is_release == 'true' }}
+          files: ecc-windows-amd64.zip
