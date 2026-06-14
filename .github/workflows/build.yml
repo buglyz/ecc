@@ -22,14 +22,20 @@ jobs:
           go-version: '1.22'
           cache: true
 
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
       - name: Build
         run: |
-          go build -ldflags="-s -w -H windowsgui" -o fan-controller.exe ./cmd/fan-controller/
+          go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 
       - name: Package Artifact
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item -Path fan-controller.exe -Destination dist/
+          Copy-Item -Path ecc.exe -Destination dist/
           Copy-Item -Path assets -Destination dist/ -Recurse
 
       - name: Upload Artifact

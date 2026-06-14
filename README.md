@@ -1,8 +1,8 @@
-# FanController
+# ECC Fan Controller
 
-[![Manual Release](https://github.com/buglyz/ecc/actions/workflows/release.yml/badge.svg)](https://github.com/buglyz/ecc/actions/workflows/release.yml)
+[![Build](https://github.com/buglyz/ecc/actions/workflows/build.yml/badge.svg)](https://github.com/buglyz/ecc/actions/workflows/build.yml) [![Manual Release](https://github.com/buglyz/ecc/actions/workflows/release.yml/badge.svg)](https://github.com/buglyz/ecc/actions/workflows/release.yml)
 
-笔记本 EC 风扇控制器，通过写入 EC 寄存器实现自定义风扇转速曲线。现已重构并搭载全新的现代化 Web UI。
+笔记本 EC（Embedded Controller）风扇控制器，通过写入 EC 寄存器实现自定义风扇转速曲线。现已重构并搭载全新的现代化 Web UI。
 
 ## 由[此项目](https://www.bilibili.com/video/BV1oaaoeFEzY/?share_source=copy_web&vd_source=02adb0cd5f8f9003d535f030aa4f3266)修改而来
 
@@ -39,7 +39,7 @@
 
 ## 使用
 
-双击 `fan-controller.exe`：
+双击 `ecc.exe`：
 1. 自动请求管理员权限（UAC 提示）
 2. 系统托盘出现图标
 3. 右键任务栏窗口打开webui
@@ -58,7 +58,7 @@
 ## 编译
 
 ```bash
-go build -ldflags="-s -w -H windowsgui" -o fan-controller.exe ./cmd/fan-controller/
+go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 ```
 
 无外部依赖，纯 Go 标准库。
@@ -71,7 +71,7 @@ go build -ldflags="-s -w -H windowsgui" -o fan-controller.exe ./cmd/fan-controll
 ## 项目结构
 
 ```
-cmd/fan-controller/     程序入口
+cmd/ecc/                程序入口
 internal/
   admin/                管理员提权 + DPI 感知
   config/               配置加载/保存/归一化（JSON + pickle 兼容）

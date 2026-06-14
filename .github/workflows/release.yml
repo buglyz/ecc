@@ -24,14 +24,20 @@ jobs:
           go-version: '1.22'
           cache: true
 
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
       - name: Build
         run: |
-          go build -ldflags="-s -w -H windowsgui" -o fan-controller.exe ./cmd/fan-controller/
+          go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 
       - name: Package Release
         run: |
           New-Item -ItemType Directory -Force -Path release
-          Copy-Item -Path fan-controller.exe -Destination release/
+          Copy-Item -Path ecc.exe -Destination release/
           Copy-Item -Path assets -Destination release/ -Recurse
           Compress-Archive -Path release/* -DestinationPath ecc-windows-amd64.zip
 
