@@ -78,6 +78,4 @@ internal/
   tray/                 系统托盘图标（Win32 Shell_NotifyIcon）
 ```
 
-## Python 原版
 
-`src/` 目录为 Python 原版源码，`FanController/` 为 PyInstaller 打包版本。
