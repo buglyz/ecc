@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buglyz/ecc/internal/controller"
 	"github.com/buglyz/ecc/internal/paths"
 )
 
@@ -68,8 +69,8 @@ func TestNormalizeFixesInvalidStrategy(t *testing.T) {
 	cfg := Default()
 	cfg.Strategy = "bogus"
 	normalized := Normalize(cfg)
-	if normalized.Strategy != DefaultStrategy {
-		t.Errorf("Normalize(bogus) = %q, want %q", normalized.Strategy, DefaultStrategy)
+	if normalized.Strategy != controller.DefaultStrategy {
+		t.Errorf("Normalize(bogus) = %q, want %q", normalized.Strategy, controller.DefaultStrategy)
 	}
 }
 
@@ -88,5 +89,14 @@ func TestNormalizeFixesInvalidActivePreset(t *testing.T) {
 	normalized := Normalize(cfg)
 	if normalized.ActivePreset != "balanced" {
 		t.Errorf("Normalize(nonexistent preset) = %q, want balanced", normalized.ActivePreset)
+	}
+}
+
+func TestNormalizeClampsTimeEntry(t *testing.T) {
+	cfg := Default()
+	cfg.TimeEntry = "9999"
+	normalized := Normalize(cfg)
+	if normalized.TimeEntry != "480" {
+		t.Errorf("Normalize(9999) = %q, want 480", normalized.TimeEntry)
 	}
 }
