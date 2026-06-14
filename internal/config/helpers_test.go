@@ -150,10 +150,10 @@ func TestIntFromAny(t *testing.T) {
 		t.Errorf("intFromAny(float64(7)) = %d, want 7", v)
 	}
 	if v, ok := intFromAny("15"); !ok || v != 15 {
-		t.Errorf("intFromAny("15") = %d, want 15", v)
+		t.Errorf(`intFromAny("15") = %d, want 15`, v)
 	}
 	if _, ok := intFromAny("abc"); ok {
-		t.Error("intFromAny("abc") should return false")
+		t.Error(`intFromAny("abc") should return false`)
 	}
 	if _, ok := intFromAny([]int{}); ok {
 		t.Error("intFromAny(slice) should return false")
@@ -168,10 +168,10 @@ func TestFloatFromAny(t *testing.T) {
 		t.Errorf("floatFromAny(3.14) = %v, want 3.14", v)
 	}
 	if v, ok := floatFromAny("2.5"); !ok || v != 2.5 {
-		t.Errorf("floatFromAny("2.5") = %v, want 2.5", v)
+		t.Errorf(`floatFromAny("2.5") = %v, want 2.5`, v)
 	}
 	if _, ok := floatFromAny("nope"); ok {
-		t.Error("floatFromAny("nope") should return false")
+		t.Error(`floatFromAny("nope") should return false`)
 	}
 }
 
