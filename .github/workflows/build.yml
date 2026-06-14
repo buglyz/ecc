@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Build
+        run: |
+          go build -ldflags="-s -w -H windowsgui" -o fan-controller.exe ./cmd/fan-controller/
+
+      - name: Package Artifact
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item -Path fan-controller.exe -Destination dist/
+          Copy-Item -Path assets -Destination dist/ -Recurse
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecc-windows-amd64
+          path: dist/

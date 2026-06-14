@@ -1,15 +1,15 @@
-name: Build and Release
+name: Manual Release
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
 
 jobs:
-  build:
+  release:
     runs-on: windows-latest
     permissions:
       contents: write
@@ -35,23 +35,9 @@ jobs:
           Copy-Item -Path assets -Destination release/ -Recurse
           Compress-Archive -Path release/* -DestinationPath ecc-windows-amd64.zip
 
-      - name: Generate Tag Name
-        id: tag_name
-        shell: bash
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-            echo "is_release=true" >> $GITHUB_OUTPUT
-          else
-            echo "tag=latest" >> $GITHUB_OUTPUT
-            echo "is_release=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag_name.outputs.tag }}
-          name: Release ${{ steps.tag_name.outputs.tag }}
-          prerelease: ${{ steps.tag_name.outputs.is_release == 'false' }}
-          make_latest: ${{ steps.tag_name.outputs.is_release == 'true' }}
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Release ${{ github.event.inputs.tag }}
           files: ecc-windows-amd64.zip
