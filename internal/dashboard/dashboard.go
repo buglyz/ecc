@@ -10,7 +10,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -80,13 +82,14 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/preset", s.handlePreset)
 	mux.HandleFunc("/api/startup", s.handleStartup)
 	mux.HandleFunc("/api/health", s.handleHealth)
+	handler := rejectCrossOrigin(mux)
 	listener, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return err
 	}
 	s.actualAddr = listener.Addr().String()
 	s.startupCached.Store(startup.IsEnabled(startup.Identifier))
-	s.httpServer = &http.Server{Addr: s.actualAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second}
+	s.httpServer = &http.Server{Addr: s.actualAddr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second}
 	s.logger.Printf("Web 控制台已启动: http://%s", s.actualAddr)
 	go func() {
 		if err := s.httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -108,6 +111,23 @@ func (s *Server) URL() string {
 		return "http://" + s.addr
 	}
 	return "http://" + s.actualAddr
+}
+
+// rejectCrossOrigin wraps handler to block cross-origin requests to /api/*.
+// A request with an Origin header whose host does not match the request's
+// Host header is rejected with 403. Requests without Origin (same-origin
+// navigation, curl, etc.) are allowed through.
+func rejectCrossOrigin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); origin != "" && strings.HasPrefix(r.URL.Path, "/api/") {
+			u, err := url.Parse(origin)
+			if err != nil || u.Host != r.Host {
+				http.Error(w, "cross-origin request rejected", http.StatusForbidden)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

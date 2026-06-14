@@ -145,3 +145,48 @@ func TestDecodeJSONLimitExceeded(t *testing.T) {
 		t.Logf("status=%d (acceptable, no panic)", rec.Code)
 	}
 }
+
+func TestRejectCrossOriginBlocksForeignOrigin(t *testing.T) {
+	wrapped := rejectCrossOrigin(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Same-origin (no Origin header) — allowed
+	req := httptest.NewRequest(http.MethodPost, "/api/config", nil)
+	req.Host = "127.0.0.1:8765"
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("same-origin status=%d, want 200", rec.Code)
+	}
+
+	// Matching Origin — allowed
+	req2 := httptest.NewRequest(http.MethodPost, "/api/config", nil)
+	req2.Host = "127.0.0.1:8765"
+	req2.Header.Set("Origin", "http://127.0.0.1:8765")
+	rec2 := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("matching origin status=%d, want 200", rec2.Code)
+	}
+
+	// Foreign Origin — blocked
+	req3 := httptest.NewRequest(http.MethodPost, "/api/config", nil)
+	req3.Host = "127.0.0.1:8765"
+	req3.Header.Set("Origin", "http://evil.example.com")
+	rec3 := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec3, req3)
+	if rec3.Code != http.StatusForbidden {
+		t.Fatalf("foreign origin status=%d, want 403", rec3.Code)
+	}
+
+	// Foreign Origin on non-API path — allowed (only /api/* is guarded)
+	req4 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req4.Host = "127.0.0.1:8765"
+	req4.Header.Set("Origin", "http://evil.example.com")
+	rec4 := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec4, req4)
+	if rec4.Code != http.StatusOK {
+		t.Fatalf("non-API foreign origin status=%d, want 200", rec4.Code)
+	}
+}
