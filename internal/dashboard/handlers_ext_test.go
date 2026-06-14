@@ -111,11 +111,20 @@ func TestHandlePresetRejectsInvalidAction(t *testing.T) {
 	}
 }
 
-func TestHandlePresetAddRejectsEmptyLabel(t *testing.T) {
+func TestHandlePresetAddAcceptsEmptyLabel(t *testing.T) {
 	server, _ := newTestServer(t)
+	// Empty label is sanitized by AddPreset (falls back to key name), not rejected.
 	rec := postJSON(t, server.handlePreset, map[string]any{"action": "add"})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200 (empty label is sanitized, not rejected)", rec.Code)
+	}
+	snap := server.configSnapshot()
+	slot, ok := snap.Presets["custom1"]
+	if !ok {
+		t.Fatal("custom1 preset not created")
+	}
+	if slot.Label == "" {
+		t.Error("label should have been auto-filled from key name")
 	}
 }
 
