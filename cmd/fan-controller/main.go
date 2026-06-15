@@ -69,8 +69,12 @@ func main() {
 	}()
 
 	writer := ec.Writer{ProbePath: runtimePaths.ECProbe, DryRun: *dryRun || *simulate, Logger: logger}
+	var fanReader controller.FanReader
+	if !*dryRun && !*simulate {
+		fanReader = &ec.Reader{ProbePath: runtimePaths.ECProbe, Logger: logger}
+	}
 	pollInterval := time.Duration(*interval) * time.Millisecond
-	fan := controller.NewFanController(reader, writer, cfg.Curve, cfg.Strategy, pollInterval, logger)
+	fan := controller.NewFanControllerWithRPM(reader, writer, fanReader, cfg.Curve, cfg.Strategy, pollInterval, logger)
 	fan.SetManual(cfg.ManualSpeedPtr())
 	fan.Start()
 	defer fan.Stop()

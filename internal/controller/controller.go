@@ -9,9 +9,10 @@ import (
 )
 
 type FanController struct {
-	reader SensorReader
-	writer FanWriter
-	logger *log.Logger
+	reader         SensorReader
+	writer         FanWriter
+	fanReader      FanReader
+	logger         *log.Logger
 
 	writeMu         sync.Mutex
 	mu              sync.RWMutex
@@ -38,6 +39,10 @@ type modeState struct {
 }
 
 func NewFanController(reader SensorReader, writer FanWriter, curve []Point, strategy string, pollInterval time.Duration, logger *log.Logger) *FanController {
+	return NewFanControllerWithRPM(reader, writer, nil, curve, strategy, pollInterval, logger)
+}
+
+func NewFanControllerWithRPM(reader SensorReader, writer FanWriter, fanReader FanReader, curve []Point, strategy string, pollInterval time.Duration, logger *log.Logger) *FanController {
 	ctx, cancel := context.WithCancel(context.Background())
 	if logger == nil {
 		logger = log.Default()
@@ -48,6 +53,7 @@ func NewFanController(reader SensorReader, writer FanWriter, curve []Point, stra
 	return &FanController{
 		reader:       reader,
 		writer:       writer,
+		fanReader:    fanReader,
 		logger:       logger,
 		curve:        append([]Point(nil), curve...),
 		strategy:     strategy,
@@ -153,12 +159,24 @@ func (c *FanController) currentMode() modeState {
 	return state
 }
 
-func (c *FanController) setLatest(cpu, gpu, targetTemp *float64, speed int, mode string, lastECWrite time.Time) {
+func (c *FanController) setLatest(cpu, gpu, targetTemp *float64, speed int, rpm *uint16, mode string, lastECWrite time.Time) {
 	now := time.Now()
 	c.mu.Lock()
-	c.latest = Latest{CPU: copyFloat(cpu), GPU: copyFloat(gpu), TargetTemp: copyFloat(targetTemp), Speed: &speed, Mode: mode, UpdatedAt: now, LastECWrite: lastECWrite}
+	c.latest = Latest{CPU: copyFloat(cpu), GPU: copyFloat(gpu), TargetTemp: copyFloat(targetTemp), Speed: &speed, ActualRPM: rpm, Mode: mode, UpdatedAt: now, LastECWrite: lastECWrite}
 	c.mu.Unlock()
-	c.history.Add(HistorySample{Time: now, CPU: copyFloat(cpu), GPU: copyFloat(gpu), TargetTemp: copyFloat(targetTemp), Speed: speed})
+	c.history.Add(HistorySample{Time: now, CPU: copyFloat(cpu), GPU: copyFloat(gpu), TargetTemp: copyFloat(targetTemp), Speed: speed, ActualRPM: rpm})
+}
+
+func (c *FanController) readRPM() *uint16 {
+	if c.fanReader == nil {
+		return nil
+	}
+	// Read Fan1 RPM (average of both fans could also be considered)
+	rpm, ok := c.fanReader.ReadRPM(c.ctx, ECRegFan1RPMLow, ECRegFan1RPMHigh)
+	if !ok {
+		return nil
+	}
+	return &rpm
 }
 
 func (c *FanController) run() {
@@ -200,7 +218,8 @@ func (c *FanController) run() {
 				cycleTemps = append(cycleTemps, *targetTemp)
 			}
 			mode = modeName(state)
-			c.setLatest(temps.CPU, temps.GPU, targetTemp, currentSpeed, mode, lastWrite)
+			rpm := c.readRPM()
+			c.setLatest(temps.CPU, temps.GPU, targetTemp, currentSpeed, rpm, mode, lastWrite)
 
 			sampleTimer.Reset(c.pollInterval)
 			select {
