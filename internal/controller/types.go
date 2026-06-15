@@ -72,6 +72,7 @@ type Latest struct {
 	GPU         *float64  `json:"gpu"`
 	TargetTemp  *float64  `json:"target_temp"`
 	Speed       *int      `json:"speed"`
+	ActualRPM   *uint16   `json:"actual_rpm,omitempty"`
 	Mode        string    `json:"mode"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	LastECWrite time.Time `json:"last_ec_write"`
@@ -83,6 +84,7 @@ type HistorySample struct {
 	GPU        *float64  `json:"gpu"`
 	TargetTemp *float64  `json:"target_temp"`
 	Speed      int       `json:"speed"`
+	ActualRPM  *uint16   `json:"actual_rpm,omitempty"`
 }
 
 type SensorReader interface {
@@ -92,4 +94,8 @@ type SensorReader interface {
 
 type FanWriter interface {
 	Write(ctx context.Context, register string, valueHex string) bool
+}
+
+type FanReader interface {
+	ReadRPM(ctx context.Context, registerLow, registerHigh string) (uint16, bool)
 }

@@ -6,6 +6,10 @@ const (
 	AppName             = "FanController"
 	ECRegFan1           = "0x2C"
 	ECRegFan2           = "0x2D"
+	ECRegFan1RPMLow     = "0xD0"
+	ECRegFan1RPMHigh    = "0xD1"
+	ECRegFan2RPMLow     = "0xD2"
+	ECRegFan2RPMHigh    = "0xD3"
 	ECFanRelease        = "0xFF"
 	SamplesPerCycle     = 6
 	SampleInterval      = time.Second

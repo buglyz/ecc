@@ -189,7 +189,7 @@ input[type=range]:disabled { opacity: 0.5; }
     <div class="card stat"><div class="label">CPU 温度</div><div class="value" id="cpu">--<span class="unit">°C</span></div><div class="extra" id="cpuExtra"></div></div>
     <div class="card stat"><div class="label">GPU 温度</div><div class="value" id="gpu">--<span class="unit">°C</span></div><div class="extra" id="gpuExtra"></div></div>
     <div class="card stat"><div class="label">目标温度</div><div class="value" id="target">--<span class="unit">°C</span></div><div class="extra" id="targetExtra"></div></div>
-    <div class="card stat"><div class="label">风扇输出</div><div class="value" id="speed">--<span class="unit">%</span></div><div class="gauge"><i id="speedBar"></i></div></div>
+    <div class="card stat"><div class="label">风扇输出</div><div class="value" id="speed">--<span class="unit">%</span></div><div class="gauge"><i id="speedBar"></i></div><div class="extra" id="rpmExtra"></div></div>
   </section>
   <section class="layout">
     <div class="left-col">
@@ -249,6 +249,7 @@ function render(s){const wasDirty=dirty||saving||curveDrag;
   setTemp('gpu','gpuExtra',s.latest.gpu,statsFor(s.history,'gpu'));
   setTemp('target','targetExtra',s.latest.target_temp,statsFor(s.history,'target_temp'));
   const sp=s.latest.speed;$('speed').innerHTML=fmt(sp)+'<span class="unit">%</span>';$('speedBar').style.width=(sp==null?0:Math.max(0,Math.min(100,sp)))+'%';
+  const rpm=s.latest.actual_rpm;const re=$('rpmExtra');if(re)re.textContent=rpm!=null?('实际转速: '+rpm+' RPM'):'';
   $('mode').textContent=s.latest.mode||'--';
   const ago=relTime(s.latest.last_ec_write);const wa=$('writeAgo');if(wa)wa.textContent=ago?('上次写入 '+ago):'';
   $('startup').textContent=s.startup?'移除开机自启动':'添加开机自启动';
