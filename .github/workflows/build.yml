@@ -1,11 +1,11 @@
-name: Build
+name: Build and Test
 
-on:
+于:
   push:
-    branches:
+    分支:
       - main
   pull_request:
-    branches:
+    分支:
       - main
 
 jobs:
