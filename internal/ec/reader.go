@@ -49,9 +49,15 @@ func (r Reader) Read(ctx context.Context, register string) (uint8, bool) {
 		return 0, false
 	}
 
-	// Parse output: expected format is hex value like "0x42" or decimal
+	// Parse output: ec-probe.exe returns format like "123 (0x7B)"
+	// We need to extract just the decimal or hex part
 	outputStr := strings.TrimSpace(string(output))
 	var value uint64
+
+	// Check for "123 (0x7B)" format - extract the decimal part before space
+	if idx := strings.Index(outputStr, " "); idx > 0 {
+		outputStr = outputStr[:idx]
+	}
 
 	// Try hex format first
 	if strings.HasPrefix(outputStr, "0x") || strings.HasPrefix(outputStr, "0X") {
