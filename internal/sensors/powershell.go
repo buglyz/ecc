@@ -18,17 +18,22 @@ import (
 
 const readTimeout = 5 * time.Second
 const closeTimeout = 2 * time.Second
+const maxBackoff = 30 * time.Second
+const backoffMultiplier = 2
 
 type PowerShellReader struct {
-	DLLPath    string
-	StateDir   string
-	Logger     *log.Logger
-	mu         sync.Mutex
-	cmd        *exec.Cmd
-	stdin      *bufio.Writer
-	stdout     *bufio.Reader
-	stdinPipe  anyWriteCloser
-	stdoutPipe io.Closer
+	DLLPath          string
+	StateDir         string
+	Logger           *log.Logger
+	mu               sync.Mutex
+	cmd              *exec.Cmd
+	stdin            *bufio.Writer
+	stdout           *bufio.Reader
+	stdinPipe        anyWriteCloser
+	stdoutPipe       io.Closer
+	consecutiveFails int
+	lastFailTime     time.Time
+	backoffUntil     time.Time
 }
 
 type anyWriteCloser interface {
@@ -47,20 +52,29 @@ func (r *PowerShellReader) Read() controller.Temps {
 	if r.Logger == nil {
 		r.Logger = log.Default()
 	}
+
+	// Check if we're in backoff period
+	if !r.backoffUntil.IsZero() && time.Now().Before(r.backoffUntil) {
+		return controller.Temps{}
+	}
+
 	if r.cmd == nil {
 		if err := r.startLocked(); err != nil {
 			r.Logger.Printf("温度读取助手启动失败: %v", err)
+			r.recordFailureLocked()
 			return controller.Temps{}
 		}
 	}
 	if _, err := r.stdin.WriteString("read\n"); err != nil {
 		r.Logger.Printf("温度读取请求失败: %v", err)
 		r.resetLocked()
+		r.recordFailureLocked()
 		return controller.Temps{}
 	}
 	if err := r.stdin.Flush(); err != nil {
 		r.Logger.Printf("温度读取请求刷新失败: %v", err)
 		r.resetLocked()
+		r.recordFailureLocked()
 		return controller.Temps{}
 	}
 
@@ -82,17 +96,28 @@ func (r *PowerShellReader) Read() controller.Temps {
 	case err := <-errCh:
 		r.Logger.Printf("温度读取响应失败: %v", err)
 		r.resetLocked()
+		r.recordFailureLocked()
 		return controller.Temps{}
 	case <-time.After(readTimeout):
 		r.Logger.Printf("温度读取响应超时")
 		r.resetLocked()
+		r.recordFailureLocked()
 		return controller.Temps{}
 	}
 	var payload tempPayload
 	if err := json.Unmarshal([]byte(line), &payload); err != nil {
 		r.Logger.Printf("温度读取响应解析失败: %v", err)
+		r.recordFailureLocked()
 		return controller.Temps{}
 	}
+
+	// Success - reset failure counter
+	if r.consecutiveFails > 0 {
+		r.Logger.Printf("温度传感器已恢复，连续失败 %d 次后成功", r.consecutiveFails)
+	}
+	r.consecutiveFails = 0
+	r.backoffUntil = time.Time{}
+
 	return controller.Temps{CPU: payload.CPU, GPU: payload.GPU}
 }
 
@@ -186,6 +211,21 @@ func (r *PowerShellReader) clearLocked() {
 	r.stdout = nil
 	r.stdinPipe = nil
 	r.stdoutPipe = nil
+}
+
+func (r *PowerShellReader) recordFailureLocked() {
+	r.consecutiveFails++
+	r.lastFailTime = time.Now()
+
+	if r.consecutiveFails >= 3 {
+		// Calculate exponential backoff: 1s, 2s, 4s, 8s, ..., max 30s
+		backoffDuration := time.Duration(1<<uint(r.consecutiveFails-3)) * time.Second
+		if backoffDuration > maxBackoff {
+			backoffDuration = maxBackoff
+		}
+		r.backoffUntil = time.Now().Add(backoffDuration)
+		r.Logger.Printf("温度传感器连续失败 %d 次，退避 %v 后重试", r.consecutiveFails, backoffDuration)
+	}
 }
 
 const powerShellScript = `param([string]$DllPath)
