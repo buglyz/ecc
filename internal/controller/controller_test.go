@@ -40,7 +40,7 @@ func TestInitialSpeedHonorsManualMode(t *testing.T) {
 
 func TestWriteSpeedRequiresBothRegisters(t *testing.T) {
 	writer := &recordingWriter{ok: false}
-	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, log.Default())
+	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 0, log.Default())
 	if fan.writeSpeed(42) {
 		t.Fatal("writeSpeed returned success when writer failed")
 	}
@@ -154,7 +154,7 @@ func TestCombineTempsBothNil(t *testing.T) {
 
 func TestWriteSpeedSuccessRecordsBothRegisters(t *testing.T) {
 	w := &recordingWriter{ok: true}
-	fan := NewFanController(testReader{}, w, DefaultCurve, DefaultStrategy, log.Default())
+	fan := NewFanController(testReader{}, w, DefaultCurve, DefaultStrategy, 0, log.Default())
 	if !fan.writeSpeed(50) {
 		t.Fatal("writeSpeed(50) should succeed")
 	}
@@ -168,7 +168,7 @@ func TestWriteSpeedSuccessRecordsBothRegisters(t *testing.T) {
 
 func TestControllerStartStop(t *testing.T) {
 	w := &recordingWriter{ok: true}
-	fan := NewFanController(testReader{}, w, DefaultCurve, DefaultStrategy, log.Default())
+	fan := NewFanController(testReader{}, w, DefaultCurve, DefaultStrategy, 0, log.Default())
 	fan.Start()
 	fan.Stop()
 	// Should not panic; done channel should be closed.

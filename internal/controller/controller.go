@@ -13,13 +13,15 @@ type FanController struct {
 	writer FanWriter
 	logger *log.Logger
 
-	writeMu     sync.Mutex
-	mu          sync.RWMutex
-	curve       []Point
-	strategy    string
-	manualSpeed *int
-	version     uint64
-	latest      Latest
+	writeMu         sync.Mutex
+	mu              sync.RWMutex
+	curve           []Point
+	strategy        string
+	manualSpeed     *int
+	version         uint64
+	latest          Latest
+	pollInterval    time.Duration
+	onWriteFailure  func()
 
 	history *History
 	nudge   chan struct{}
@@ -35,22 +37,26 @@ type modeState struct {
 	version     uint64
 }
 
-func NewFanController(reader SensorReader, writer FanWriter, curve []Point, strategy string, logger *log.Logger) *FanController {
+func NewFanController(reader SensorReader, writer FanWriter, curve []Point, strategy string, pollInterval time.Duration, logger *log.Logger) *FanController {
 	ctx, cancel := context.WithCancel(context.Background())
 	if logger == nil {
 		logger = log.Default()
 	}
+	if pollInterval <= 0 {
+		pollInterval = SampleInterval
+	}
 	return &FanController{
-		reader:   reader,
-		writer:   writer,
-		logger:   logger,
-		curve:    append([]Point(nil), curve...),
-		strategy: strategy,
-		history:  NewHistory(HistoryMaxSamples),
-		nudge:    make(chan struct{}, 1),
-		ctx:      ctx,
-		cancel:   cancel,
-		done:     make(chan struct{}),
+		reader:       reader,
+		writer:       writer,
+		logger:       logger,
+		curve:        append([]Point(nil), curve...),
+		strategy:     strategy,
+		pollInterval: pollInterval,
+		history:      NewHistory(HistoryMaxSamples),
+		nudge:        make(chan struct{}, 1),
+		ctx:          ctx,
+		cancel:       cancel,
+		done:         make(chan struct{}),
 	}
 }
 
@@ -105,6 +111,12 @@ func (c *FanController) SetManual(speed *int) {
 		c.logger.Print("控制器手动模式已更新: speed=auto")
 	}
 	c.kick()
+}
+
+func (c *FanController) SetWriteFailureHandler(handler func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onWriteFailure = handler
 }
 
 func (c *FanController) Latest() Latest {
@@ -187,7 +199,7 @@ func (c *FanController) run() {
 			mode = modeName(state)
 			c.setLatest(temps.CPU, temps.GPU, targetTemp, currentSpeed, mode, lastWrite)
 			select {
-			case <-time.After(SampleInterval):
+			case <-time.After(c.pollInterval):
 			case <-c.nudge:
 				i = SamplesPerCycle
 			case <-c.ctx.Done():
@@ -236,10 +248,16 @@ func (c *FanController) run() {
 				}
 				c.logger.Printf("转速已提交: mode=%s speed=%d hex=%s avg_temp=%v drifted=%t heartbeat=%t", mode, target, toHex(target), formatTemp(avgTemp), drifted, heartbeatDue)
 			} else {
-				// 写失败意味着风扇并未设到该温度对应的转速，不能记为“已提交”，
+				// 写失败意味着风扇并未设到该温度对应的转速，不能记为”已提交”，
 				// 否则下一周期滞回判断会误以为已稳定而跳过重试。清空已提交温度，强制下一周期重试。
 				lastCommittedTemp = nil
 				c.logger.Printf("转速提交失败: mode=%s speed=%d hex=%s avg_temp=%v drifted=%t heartbeat=%t", mode, target, toHex(target), formatTemp(avgTemp), drifted, heartbeatDue)
+				c.mu.RLock()
+				handler := c.onWriteFailure
+				c.mu.RUnlock()
+				if handler != nil {
+					handler()
+				}
 			}
 		}
 		cycleStart = time.Now()

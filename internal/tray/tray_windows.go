@@ -250,6 +250,28 @@ func (t *Tray) Update(temp *float64, speed *int) {
 	pShellNotifyIcon.Call(nimModify, uintptr(unsafe.Pointer(&t.nid)))
 }
 
+func (t *Tray) Alert() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.running {
+		return
+	}
+
+	// Flash icon red to indicate write failure
+	redIcon := createColorIcon(255, 0, 0)
+	if redIcon != 0 {
+		oldIcon := t.nid.hIcon
+		t.nid.hIcon = redIcon
+		t.nid.uFlags = nifIcon
+		pShellNotifyIcon.Call(nimModify, uintptr(unsafe.Pointer(&t.nid)))
+
+		// Restore after brief delay (handled by next Update call)
+		if oldIcon != 0 && oldIcon != t.defaultIcon && oldIcon != redIcon {
+			pDestroyIcon.Call(uintptr(oldIcon))
+		}
+	}
+}
+
 func (t *Tray) Stop() {
 	t.mu.Lock()
 	if !t.running {
@@ -335,6 +357,67 @@ func createTempIcon(temp *float64) syscall.Handle {
 	}
 
 	pixels := renderText16(text, r, g, b)
+
+	bi := bitmapInfo{
+		bmiHeader: bitmapInfoHeader{
+			biSize:     uint32(unsafe.Sizeof(bitmapInfoHeader{})),
+			biWidth:    int32(size),
+			biHeight:   -int32(size),
+			biPlanes:   1,
+			biBitCount: 32,
+		},
+	}
+
+	var bits unsafe.Pointer
+	hBitmap, _, _ := pCreateDIBSection.Call(0, uintptr(unsafe.Pointer(&bi)), 0, uintptr(unsafe.Pointer(&bits)), 0, 0)
+	if hBitmap == 0 || bits == nil {
+		if hBitmap != 0 {
+			pDeleteObject.Call(hBitmap)
+		}
+		return 0
+	}
+	dst := unsafe.Slice((*byte)(bits), size*size*4)
+	copy(dst, pixels)
+
+	var maskPtr unsafe.Pointer
+	hMask, _, _ := pCreateDIBSection.Call(0, uintptr(unsafe.Pointer(&bi)), 0, uintptr(unsafe.Pointer(&maskPtr)), 0, 0)
+	if hMask == 0 || maskPtr == nil {
+		if hMask != 0 {
+			pDeleteObject.Call(hMask)
+		}
+		pDeleteObject.Call(hBitmap)
+		return 0
+	}
+	maskDst := unsafe.Slice((*byte)(maskPtr), size*size*4)
+	for i := range maskDst {
+		maskDst[i] = 0
+	}
+
+	ii := iconInfo{
+		fIcon:    1,
+		hbmMask:  syscall.Handle(hMask),
+		hbmColor: syscall.Handle(hBitmap),
+	}
+	icon, _, _ := pCreateIconIndirect.Call(uintptr(unsafe.Pointer(&ii)))
+
+	pDeleteObject.Call(hBitmap)
+	pDeleteObject.Call(hMask)
+
+	return syscall.Handle(icon)
+}
+
+func createColorIcon(r, g, b uint8) syscall.Handle {
+	const size = 16
+	pixels := make([]byte, size*size*4)
+
+	// Fill entire icon with solid color
+	for i := 0; i < size*size; i++ {
+		idx := i * 4
+		pixels[idx+0] = b   // Blue
+		pixels[idx+1] = g   // Green
+		pixels[idx+2] = r   // Red
+		pixels[idx+3] = 255 // Alpha
+	}
 
 	bi := bitmapInfo{
 		bmiHeader: bitmapInfoHeader{
