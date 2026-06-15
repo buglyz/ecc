@@ -182,6 +182,9 @@ func (c *FanController) run() {
 	var lastAppliedVersion uint64
 	mode := modeName(state)
 
+	sampleTimer := time.NewTimer(c.pollInterval)
+	defer sampleTimer.Stop()
+
 	for {
 		cycleTemps := make([]float64, 0, SamplesPerCycle)
 		for i := 0; i < SamplesPerCycle; i++ {
@@ -198,9 +201,14 @@ func (c *FanController) run() {
 			}
 			mode = modeName(state)
 			c.setLatest(temps.CPU, temps.GPU, targetTemp, currentSpeed, mode, lastWrite)
+
+			sampleTimer.Reset(c.pollInterval)
 			select {
-			case <-time.After(c.pollInterval):
+			case <-sampleTimer.C:
 			case <-c.nudge:
+				if !sampleTimer.Stop() {
+					<-sampleTimer.C
+				}
 				i = SamplesPerCycle
 			case <-c.ctx.Done():
 				return
