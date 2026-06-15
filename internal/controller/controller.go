@@ -171,9 +171,14 @@ func (c *FanController) readRPM() *uint16 {
 	if c.fanReader == nil {
 		return nil
 	}
-	// Read Fan1 RPM (average of both fans could also be considered)
+	// Try to read actual RPM from hardware
 	rpm, ok := c.fanReader.ReadRPM(c.ctx, ECRegFan1RPMLow, ECRegFan1RPMHigh)
 	if !ok {
+		return nil
+	}
+	// If hardware returns 0, it likely means RPM registers are not available
+	// Return nil to indicate no data rather than showing misleading 0 RPM
+	if rpm == 0 {
 		return nil
 	}
 	return &rpm
