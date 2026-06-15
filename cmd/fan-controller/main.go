@@ -71,7 +71,10 @@ func main() {
 	writer := ec.Writer{ProbePath: runtimePaths.ECProbe, DryRun: *dryRun || *simulate, Logger: logger}
 	var fanReader controller.FanReader
 	if !*dryRun && !*simulate {
-		fanReader = &ec.Reader{ProbePath: runtimePaths.ECProbe, Logger: logger}
+		// 使用 GMWMI 读取风扇 RPM（适用于神舟等笔记本）
+		// 如果 GMWMI 不可用，会优雅降级（返回 false）
+		fanReader = sensors.NewGMWMIFanReader(logger)
+		logger.Print("使用 GMWMI 接口读取风扇 RPM")
 	}
 	pollInterval := time.Duration(*interval) * time.Millisecond
 	fan := controller.NewFanControllerWithRPM(reader, writer, fanReader, cfg.Curve, cfg.Strategy, pollInterval, logger)

@@ -97,14 +97,19 @@ internal/
 - [x] **font 渲染测试** — 为 `tray/font_windows.go` 的 `renderText16` / glyphs 补跨平台可测的纯计算单元测试
 - [x] **EC 写入失败告警** — `writeSpeed` 返回 false 时托盘闪动/弹通知，不让用户对控制失效毫不知情
 - [x] **温度传感器掉线恢复** — PowerShell 进程连续失败时指数退避重启+告警，避免每秒白启动
-- [x] **风扇转速反馈** — 读取实际风扇转速寄存器，Web UI 图表显示目标转速 vs 实际转速对比
-  - ⚠️ **硬件兼容性说明**：RPM 读取功能在部分硬件上可能不可用（如神舟 QNLXS 等型号），这些硬件不通过标准 EC 寄存器暴露 RPM 数据。程序会自动检测并优雅降级（不显示 RPM）。
+- [x] **风扇转速反馈** — 通过 WMI RW_GMWMI 接口读取实际风扇 RPM，Web UI 图表显示实时转速
+  - ✅ **神舟笔记本支持**：通过 Gaming WMI (RW_GMWMI) 接口读取 CPU 和 GPU 风扇实际转速
+  - ℹ️ **技术细节**：BufferBytes[0x0C-0x0D] = CPU RPM, BufferBytes[0x10-0x11] = GPU RPM
 
 ## ⚠️ 硬件兼容性
 
+**风扇控制**：
+- ✅ 通过 EC 寄存器 (0x2C, 0x2D) 写入风扇转速百分比
+- ⚠️ 注意：部分硬件的 EC 寄存器是只写的，无法读回验证，但写入仍然有效
+
 **风扇转速反馈（RPM）**：
-- ✅ 支持通过标准 EC 寄存器（0xD0-0xD3）读取 RPM 的硬件会显示实际转速
-- ⚠️ 部分硬件（如神舟 QNLXS）不支持 RPM 读取，会优雅降级（不显示 RPM 信息）
-- ℹ️ 如果你的硬件 RPM 寄存器地址不同，可修改 `internal/controller/constants.go` 中的 `ECRegFan*RPM*` 常量
+- ✅ **神舟笔记本（已测试）**：通过 WMI RW_GMWMI 接口读取，完美支持
+- ⚠️ 其他品牌笔记本可能使用不同的接口，需要适配
+- ℹ️ 如果 RPM 读取不可用，程序会自动检测并优雅降级（不显示 RPM 信息）
 
 
