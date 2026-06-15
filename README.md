@@ -89,13 +89,13 @@ internal/
 
 ## 📋 重构路线图
 
-- [ ] **拆 `pickle.go`** — 将 `config.go` 中 ~500 行 pickle 解析器独立为 `internal/config/pickle.go`，`config.go` 只保留配置业务逻辑
-- [ ] **前端抽离** — 将 `dashboard.go` 内联的 CSS/HTML/JS 迁移到 `web/` 目录，通过 `go:embed` 嵌入，`dashboard.go` 只留 HTTP handler
-- [ ] **API 禁止跨域** — `/api/*` 端点校验 `Origin`/`Host` 头，拒绝非 localhost 来源的请求
-- [ ] **Google Fonts 本地化** — 将外链字体下载到 `web/assets/` 本地引用，离线场景 UI 不崩
-- [ ] **轮询间隔可配置** — 将 `time.After(time.Second)` 硬编码改为可配置的 `--interval` 参数
-- [ ] **font 渲染测试** — 为 `tray/font_windows.go` 的 `renderText16` / glyphs 补跨平台可测的纯计算单元测试
-- [ ] **EC 写入失败告警** — `writeSpeed` 返回 false 时托盘闪动/弹通知，不让用户对控制失效毫不知情
+- [x] **拆 `pickle.go`** — 将 `config.go` 中 ~500 行 pickle 解析器独立为 `internal/config/pickle.go`，`config.go` 只保留配置业务逻辑
+- [x] **前端抽离** — 将 `dashboard.go` 内联的 CSS/HTML/JS 迁移到 `web/` 目录，通过 `go:embed` 嵌入，`dashboard.go` 只留 HTTP handler
+- [x] **API 禁止跨域** — `/api/*` 端点校验 `Origin`/`Host` 头，拒绝非 localhost 来源的请求
+- [x] **Google Fonts 本地化** — 将外链字体下载到 `web/assets/` 本地引用，离线场景 UI 不崩
+- [x] **轮询间隔可配置** — 将 `time.After(time.Second)` 硬编码改为可配置的 `--interval` 参数
+- [x] **font 渲染测试** — 为 `tray/font_windows.go` 的 `renderText16` / glyphs 补跨平台可测的纯计算单元测试
+- [x] **EC 写入失败告警** — `writeSpeed` 返回 false 时托盘闪动/弹通知，不让用户对控制失效毫不知情
 - [ ] **温度传感器掉线恢复** — PowerShell 进程连续失败时指数退避重启+告警，避免每秒白启动
 - [ ] **风扇转速反馈** — 读取实际风扇转速寄存器，Web UI 图表显示目标转速 vs 实际转速对比
 
