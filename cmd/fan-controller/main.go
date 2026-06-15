@@ -26,6 +26,7 @@ import (
 
 func main() {
 	port := flag.Int("port", 8765, "local dashboard port")
+	interval := flag.Int("interval", 1000, "polling interval in milliseconds (default 1000)")
 	dryRun := flag.Bool("dry-run", false, "log EC writes instead of touching hardware")
 	simulate := flag.Bool("simulate", false, "use simulated CPU/GPU temperatures")
 	skipAdmin := flag.Bool("skip-admin", false, "do not request administrator elevation")
@@ -68,7 +69,8 @@ func main() {
 	}()
 
 	writer := ec.Writer{ProbePath: runtimePaths.ECProbe, DryRun: *dryRun || *simulate, Logger: logger}
-	fan := controller.NewFanController(reader, writer, cfg.Curve, cfg.Strategy, logger)
+	pollInterval := time.Duration(*interval) * time.Millisecond
+	fan := controller.NewFanController(reader, writer, cfg.Curve, cfg.Strategy, pollInterval, logger)
 	fan.SetManual(cfg.ManualSpeedPtr())
 	fan.Start()
 	defer fan.Stop()
@@ -103,7 +105,7 @@ func main() {
 		trayIcon := tray.New(onShow, triggerExit)
 
 		go func() {
-			ticker := time.NewTicker(time.Second)
+			ticker := time.NewTicker(pollInterval)
 			defer ticker.Stop()
 			for {
 				select {

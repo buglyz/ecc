@@ -23,7 +23,7 @@ func (okWriter) Write(context.Context, string, string) bool { return true }
 
 func TestURLUsesActualEphemeralPort(t *testing.T) {
 	cfg := config.Default()
-	fan := controller.NewFanController(staticReader{}, okWriter{}, cfg.Curve, cfg.Strategy, log.Default())
+	fan := controller.NewFanController(staticReader{}, okWriter{}, cfg.Curve, cfg.Strategy, 0, log.Default())
 	server := New("127.0.0.1:0", structPaths(), &cfg, fan, log.Default())
 	if err := server.Start(); err != nil {
 		t.Fatal(err)
@@ -44,7 +44,7 @@ func TestURLUsesActualEphemeralPort(t *testing.T) {
 
 func TestConfigSnapshotConcurrentClone(t *testing.T) {
 	cfg := config.Default()
-	fan := controller.NewFanController(staticReader{}, okWriter{}, cfg.Curve, cfg.Strategy, log.Default())
+	fan := controller.NewFanController(staticReader{}, okWriter{}, cfg.Curve, cfg.Strategy, 0, log.Default())
 	server := New("127.0.0.1:0", structPaths(), &cfg, fan, log.Default())
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {

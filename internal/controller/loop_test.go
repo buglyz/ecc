@@ -44,7 +44,7 @@ func (w *syncWriter) last(register string) (string, bool) {
 
 func TestStopReleasesBothFans(t *testing.T) {
 	writer := &syncWriter{ok: true}
-	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, log.New(testWriter{t}, "", 0))
+	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 0, log.New(testWriter{t}, "", 0))
 	fan.Start()
 	// Stop before the initial 1s write so the only writes are the release writes.
 	fan.Stop()
@@ -64,7 +64,7 @@ func TestInitialSpeedWrittenAfterStart(t *testing.T) {
 		t.Skip("skipping timing-dependent control loop test in -short mode")
 	}
 	writer := &syncWriter{ok: true}
-	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, log.New(testWriter{t}, "", 0))
+	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 0, log.New(testWriter{t}, "", 0))
 	fan.Start()
 	// The loop sleeps 1s before writing the initial speed.
 	time.Sleep(1500 * time.Millisecond)
@@ -88,7 +88,7 @@ func TestInitialSpeedWrittenAfterStart(t *testing.T) {
 
 func TestLatestReflectsManualMode(t *testing.T) {
 	writer := &syncWriter{ok: true}
-	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, log.New(testWriter{t}, "", 0))
+	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 0, log.New(testWriter{t}, "", 0))
 	speed := 73
 	fan.SetManual(&speed)
 	if got := fan.currentMode(); got.manualSpeed == nil || *got.manualSpeed != 73 {
@@ -102,7 +102,7 @@ func TestLatestReflectsManualMode(t *testing.T) {
 
 func TestSetManualClampsRange(t *testing.T) {
 	writer := &syncWriter{ok: true}
-	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, log.New(testWriter{t}, "", 0))
+	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 0, log.New(testWriter{t}, "", 0))
 	over := 250
 	fan.SetManual(&over)
 	if got := *fan.currentMode().manualSpeed; got != 100 {
@@ -117,7 +117,7 @@ func TestSetManualClampsRange(t *testing.T) {
 
 func TestSetCurveAndStrategyBumpVersion(t *testing.T) {
 	writer := &syncWriter{ok: true}
-	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, log.New(testWriter{t}, "", 0))
+	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 0, log.New(testWriter{t}, "", 0))
 	v0 := fan.currentMode().version
 	fan.SetCurve([]Point{{30, 10}, {50, 30}, {70, 50}, {80, 70}, {90, 90}})
 	v1 := fan.currentMode().version

@@ -13,13 +13,14 @@ type FanController struct {
 	writer FanWriter
 	logger *log.Logger
 
-	writeMu     sync.Mutex
-	mu          sync.RWMutex
-	curve       []Point
-	strategy    string
-	manualSpeed *int
-	version     uint64
-	latest      Latest
+	writeMu      sync.Mutex
+	mu           sync.RWMutex
+	curve        []Point
+	strategy     string
+	manualSpeed  *int
+	version      uint64
+	latest       Latest
+	pollInterval time.Duration
 
 	history *History
 	nudge   chan struct{}
@@ -35,22 +36,26 @@ type modeState struct {
 	version     uint64
 }
 
-func NewFanController(reader SensorReader, writer FanWriter, curve []Point, strategy string, logger *log.Logger) *FanController {
+func NewFanController(reader SensorReader, writer FanWriter, curve []Point, strategy string, pollInterval time.Duration, logger *log.Logger) *FanController {
 	ctx, cancel := context.WithCancel(context.Background())
 	if logger == nil {
 		logger = log.Default()
 	}
+	if pollInterval <= 0 {
+		pollInterval = SampleInterval
+	}
 	return &FanController{
-		reader:   reader,
-		writer:   writer,
-		logger:   logger,
-		curve:    append([]Point(nil), curve...),
-		strategy: strategy,
-		history:  NewHistory(HistoryMaxSamples),
-		nudge:    make(chan struct{}, 1),
-		ctx:      ctx,
-		cancel:   cancel,
-		done:     make(chan struct{}),
+		reader:       reader,
+		writer:       writer,
+		logger:       logger,
+		curve:        append([]Point(nil), curve...),
+		strategy:     strategy,
+		pollInterval: pollInterval,
+		history:      NewHistory(HistoryMaxSamples),
+		nudge:        make(chan struct{}, 1),
+		ctx:          ctx,
+		cancel:       cancel,
+		done:         make(chan struct{}),
 	}
 }
 
@@ -187,7 +192,7 @@ func (c *FanController) run() {
 			mode = modeName(state)
 			c.setLatest(temps.CPU, temps.GPU, targetTemp, currentSpeed, mode, lastWrite)
 			select {
-			case <-time.After(SampleInterval):
+			case <-time.After(c.pollInterval):
 			case <-c.nudge:
 				i = SamplesPerCycle
 			case <-c.ctx.Done():
