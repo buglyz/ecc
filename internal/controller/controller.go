@@ -13,14 +13,15 @@ type FanController struct {
 	writer FanWriter
 	logger *log.Logger
 
-	writeMu      sync.Mutex
-	mu           sync.RWMutex
-	curve        []Point
-	strategy     string
-	manualSpeed  *int
-	version      uint64
-	latest       Latest
-	pollInterval time.Duration
+	writeMu         sync.Mutex
+	mu              sync.RWMutex
+	curve           []Point
+	strategy        string
+	manualSpeed     *int
+	version         uint64
+	latest          Latest
+	pollInterval    time.Duration
+	onWriteFailure  func()
 
 	history *History
 	nudge   chan struct{}
@@ -110,6 +111,12 @@ func (c *FanController) SetManual(speed *int) {
 		c.logger.Print("控制器手动模式已更新: speed=auto")
 	}
 	c.kick()
+}
+
+func (c *FanController) SetWriteFailureHandler(handler func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onWriteFailure = handler
 }
 
 func (c *FanController) Latest() Latest {
@@ -241,10 +248,16 @@ func (c *FanController) run() {
 				}
 				c.logger.Printf("转速已提交: mode=%s speed=%d hex=%s avg_temp=%v drifted=%t heartbeat=%t", mode, target, toHex(target), formatTemp(avgTemp), drifted, heartbeatDue)
 			} else {
-				// 写失败意味着风扇并未设到该温度对应的转速，不能记为“已提交”，
+				// 写失败意味着风扇并未设到该温度对应的转速，不能记为”已提交”，
 				// 否则下一周期滞回判断会误以为已稳定而跳过重试。清空已提交温度，强制下一周期重试。
 				lastCommittedTemp = nil
 				c.logger.Printf("转速提交失败: mode=%s speed=%d hex=%s avg_temp=%v drifted=%t heartbeat=%t", mode, target, toHex(target), formatTemp(avgTemp), drifted, heartbeatDue)
+				c.mu.RLock()
+				handler := c.onWriteFailure
+				c.mu.RUnlock()
+				if handler != nil {
+					handler()
+				}
 			}
 		}
 		cycleStart = time.Now()

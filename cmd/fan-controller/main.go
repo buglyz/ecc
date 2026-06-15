@@ -104,6 +104,11 @@ func main() {
 		onShow := func() { openBrowser(dashURL) }
 		trayIcon := tray.New(onShow, triggerExit)
 
+		// Set write failure handler to alert via tray icon
+		fan.SetWriteFailureHandler(func() {
+			trayIcon.Alert()
+		})
+
 		go func() {
 			ticker := time.NewTicker(pollInterval)
 			defer ticker.Stop()
