@@ -37,6 +37,49 @@ func postJSON(t *testing.T, handler http.HandlerFunc, body any) *httptest.Respon
 	return rec
 }
 
+func postJSONWithOrigin(t *testing.T, handler http.HandlerFunc, origin string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	data, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(data))
+	req.Header.Set("Origin", origin)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+	return rec
+}
+
+func TestHandleConfigRejectsCrossOrigin(t *testing.T) {
+	server, _ := newTestServer(t)
+	rec := postJSONWithOrigin(t, server.handleConfig, "https://evil.example.com", map[string]any{"manual_speed": 80, "manual_enabled": true})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403 for cross-origin request", rec.Code)
+	}
+	// The rejected request must not have mutated persisted state.
+	if got := server.configSnapshot().ManualEnabled; got {
+		t.Fatal("cross-origin request should not have changed config")
+	}
+}
+
+func TestHandleStartupRejectsCrossOrigin(t *testing.T) {
+	server, _ := newTestServer(t)
+	rec := postJSONWithOrigin(t, server.handleStartup, "http://attacker.test", map[string]any{"enabled": true})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403 for cross-origin startup request", rec.Code)
+	}
+}
+
+func TestHandleConfigAllowsLoopbackOrigin(t *testing.T) {
+	server, _ := newTestServer(t)
+	for _, origin := range []string{"http://127.0.0.1:8765", "http://localhost:8765", "http://[::1]:8765"} {
+		rec := postJSONWithOrigin(t, server.handleConfig, origin, map[string]any{"strategy": "max"})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("origin %q status=%d body=%s, want 200", origin, rec.Code, rec.Body.String())
+		}
+	}
+}
+
 func TestHandleConfigRejectsInvalidStrategy(t *testing.T) {
 	server, _ := newTestServer(t)
 	rec := postJSON(t, server.handleConfig, map[string]any{"strategy": "bogus"})

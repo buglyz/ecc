@@ -176,6 +176,10 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
+	if !sameOrigin(r) {
+		forbiddenOrigin(w)
+		return
+	}
 	var req updateRequest
 	if err := decodeJSON(r, &req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -232,6 +236,10 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePreset(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		methodNotAllowed(w)
+		return
+	}
+	if !sameOrigin(r) {
+		forbiddenOrigin(w)
 		return
 	}
 	var req presetRequest
@@ -301,6 +309,10 @@ func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
+	if !sameOrigin(r) {
+		forbiddenOrigin(w)
+		return
+	}
 	var req startupRequest
 	if err := decodeJSON(r, &req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -351,6 +363,38 @@ func (s *Server) writeJSON(w http.ResponseWriter, value any) {
 
 func methodNotAllowed(w http.ResponseWriter) {
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+}
+
+// sameOrigin 校验状态变更请求的来源，防御 CSRF / DNS-rebinding。
+// 本服务以管理员权限运行且暴露可注册开机自启动高权限计划任务的写接口，
+// 而浏览器「简单请求」（如 text/plain 的 fetch）不触发 CORS 预检，
+// 任意恶意网页都能向 127.0.0.1 发 POST。真实 UI 走相对路径（同源），
+// Origin 恒为本地回环；非浏览器客户端与单元测试不带 Origin，予以放行。
+func sameOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return isLoopbackHost(u.Hostname())
+}
+
+// isLoopbackHost 报告主机名是否指向本机回环地址。
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
+}
+
+func forbiddenOrigin(w http.ResponseWriter) {
+	http.Error(w, "forbidden origin", http.StatusForbidden)
 }
 
 const maxRequestBody = 64 * 1024
