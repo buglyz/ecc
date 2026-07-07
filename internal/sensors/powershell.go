@@ -19,6 +19,16 @@ import (
 const readTimeout = 5 * time.Second
 const closeTimeout = 2 * time.Second
 
+// 温度助手（powershell.exe + LibreHardwareMonitor）启动失败或中途退出后的重启退避。
+// startLocked 只调 cmd.Start()，无法保证子进程存活：若 LHM DLL 损坏或 Add-Type 抛异常
+// 导致脚本一启动就退出，Read() 每秒都会走失败路径并重新 spawn 一个 powershell.exe，
+// 持续故障时便是每秒一个进程、一天数万次的进程风暴。退避窗内的 Read 直接返回空温度、
+// 不再 spawn，间隔从 startBackoffMin 起指数翻倍、封顶 startBackoffMax，成功读到数据即清零。
+const (
+	startBackoffMin = 2 * time.Second
+	startBackoffMax = 60 * time.Second
+)
+
 type PowerShellReader struct {
 	DLLPath    string
 	StateDir   string
@@ -29,6 +39,15 @@ type PowerShellReader struct {
 	stdout     *bufio.Reader
 	stdinPipe  anyWriteCloser
 	stdoutPipe io.Closer
+	backoff    time.Duration
+	nextStart  time.Time
+	now        func() time.Time
+}
+
+// clearBackoff 在成功读到温度后清零退避，使下次故障从最小间隔重新开始。
+func (r *PowerShellReader) clearBackoff() {
+	r.backoff = 0
+	r.nextStart = time.Time{}
 }
 
 type anyWriteCloser interface {
@@ -41,6 +60,28 @@ type tempPayload struct {
 	GPU *float64 `json:"gpu"`
 }
 
+// nowFn 返回当前时间，测试可注入伪时钟以验证退避窗口而不依赖真实时间。
+func (r *PowerShellReader) nowFn() time.Time {
+	if r.now != nil {
+		return r.now()
+	}
+	return time.Now()
+}
+
+// noteStartFailureLocked 在子进程启动失败后推进退避窗：间隔从 startBackoffMin
+// 起指数翻倍、封顶 startBackoffMax，并据此设定下一次允许 spawn 的时间点。
+func (r *PowerShellReader) noteStartFailureLocked() {
+	if r.backoff == 0 {
+		r.backoff = startBackoffMin
+	} else {
+		r.backoff *= 2
+		if r.backoff > startBackoffMax {
+			r.backoff = startBackoffMax
+		}
+	}
+	r.nextStart = r.nowFn().Add(r.backoff)
+}
+
 func (r *PowerShellReader) Read() controller.Temps {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -48,8 +89,13 @@ func (r *PowerShellReader) Read() controller.Temps {
 		r.Logger = log.Default()
 	}
 	if r.cmd == nil {
+		// 退避窗内不再 spawn，直接返回空温度，避免持续故障时的进程风暴。
+		if now := r.nowFn(); !r.nextStart.IsZero() && now.Before(r.nextStart) {
+			return controller.Temps{}
+		}
 		if err := r.startLocked(); err != nil {
-			r.Logger.Printf("温度读取助手启动失败: %v", err)
+			r.noteStartFailureLocked()
+			r.Logger.Printf("温度读取助手启动失败: %v (退避 %s)", err, r.backoff)
 			return controller.Temps{}
 		}
 	}
@@ -93,6 +139,8 @@ func (r *PowerShellReader) Read() controller.Temps {
 		r.Logger.Printf("温度读取响应解析失败: %v", err)
 		return controller.Temps{}
 	}
+	// 成功读到数据：清零退避，使下次故障从最小间隔重新开始。
+	r.clearBackoff()
 	return controller.Temps{CPU: payload.CPU, GPU: payload.GPU}
 }
 
@@ -137,8 +185,11 @@ func (r *PowerShellReader) startLocked() error {
 	return nil
 }
 
+// resetLocked 在读取失败后杀掉并清理子进程，同时推进退避窗：进程虽已起来但
+// 读超时/出错时，若不退避，cmd 归零后下一秒又会立即重启，仍是进程风暴。
 func (r *PowerShellReader) resetLocked() {
 	_ = r.stopLocked(true, closeTimeout)
+	r.noteStartFailureLocked()
 }
 
 func (r *PowerShellReader) stopLocked(kill bool, timeout time.Duration) error {
