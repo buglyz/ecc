@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math"
 	"sync"
@@ -264,7 +265,8 @@ func (c *FanController) run() {
 			continue
 		}
 
-		if target != currentSpeed || drifted || heartbeatDue {
+		versionChanged := lastAppliedVersion != state.version
+		if target != currentSpeed || drifted || heartbeatDue || versionChanged {
 			select {
 			case <-c.ctx.Done():
 				return
@@ -348,20 +350,7 @@ func absDuration(value time.Duration) time.Duration {
 }
 
 func toHex(value int) string {
-	const digits = "0123456789abcdef"
-	if value == 0 {
-		return "0x0"
-	}
-	n := value
-	buf := make([]byte, 0, 4)
-	for n > 0 {
-		buf = append(buf, digits[n&0xf])
-		n >>= 4
-	}
-	for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
-		buf[i], buf[j] = buf[j], buf[i]
-	}
-	return "0x" + string(buf)
+	return fmt.Sprintf("0x%x", value)
 }
 
 func formatTemp(temp *float64) any {

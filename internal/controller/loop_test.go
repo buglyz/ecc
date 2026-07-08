@@ -138,3 +138,58 @@ func (w testWriter) Write(p []byte) (int, error) {
 	w.t.Logf("%s", p)
 	return len(p), nil
 }
+
+// TestConfigChangeForcesFanWrite 验证配置变化（曲线/策略）后即使目标转速不变也会立即写入。
+// 回归测试：修复前依赖 30 秒心跳兜底，用户改完配置可能要等最多 30 秒才生效。
+func TestConfigChangeForcesFanWrite(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping timing-dependent control loop test in -short mode")
+	}
+
+	// 构造一个特殊场景：两条不同曲线在某温度点插值出相同转速
+	curve1 := []Point{{40, 50}, {60, 50}, {80, 80}} // 40-60°C 平坦 50%
+	curve2 := []Point{{40, 50}, {50, 50}, {80, 90}} // 40-50°C 平坦 50%（不同曲线但该区间转速相同）
+
+	// 构造恒定返回 45°C 的 reader，两条曲线插值都是 50%
+	fixedReader := &fixedTempReader{cpu: 45.0, gpu: 45.0}
+	writer := &syncWriter{ok: true}
+	fan := NewFanController(fixedReader, writer, curve1, "weighted", 100*time.Millisecond, log.New(testWriter{t}, "", 0))
+	fan.Start()
+	defer fan.Stop()
+
+	// 等初始写入完成（1s 延迟 + 首周期 ~600ms）
+	time.Sleep(1800 * time.Millisecond)
+	initialWrites := len(writer.snapshot())
+
+	// 切换到 curve2（版本递增，但目标转速仍是 50%）
+	// SetCurve 会自动调用 kick() 触发采样周期
+	fan.SetCurve(curve2)
+
+	// 给控制循环时间处理（一个周期 ~600ms + kick 响应）
+	time.Sleep(800 * time.Millisecond)
+
+	finalWrites := writer.snapshot()
+	// 配置变化应触发新写入（即使转速未变），所以 writes 应增加
+	if len(finalWrites) <= initialWrites {
+		t.Fatalf("配置变化后未触发写入: initial=%d final=%d, writes=%v", initialWrites, len(finalWrites), finalWrites)
+	}
+
+	// 验证写入的确实是 50% (0x32)
+	lastFan1, ok := writer.last(ECRegFan1)
+	if !ok || lastFan1 != "0x32" {
+		t.Fatalf("配置变化后 fan1=%q, want 0x32", lastFan1)
+	}
+}
+
+// fixedTempReader 返回固定温度，用于构造可控测试场景
+type fixedTempReader struct {
+	cpu, gpu float64
+}
+
+func (r *fixedTempReader) Read() Temps {
+	return Temps{CPU: &r.cpu, GPU: &r.gpu}
+}
+
+func (r *fixedTempReader) Close() error {
+	return nil
+}
