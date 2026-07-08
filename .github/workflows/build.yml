@@ -37,6 +37,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist
           Copy-Item -Path ecc.exe -Destination dist/
           Copy-Item -Path assets -Destination dist/ -Recurse
+          Copy-Item -Path install.ps1 -Destination dist/
+          Copy-Item -Path uninstall.ps1 -Destination dist/
+          Copy-Item -Path README.md -Destination dist/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7

@@ -36,14 +36,64 @@ jobs:
 
       - name: Package Release
         run: |
+          $version = "${{ github.event.inputs.tag }}"
+          $zipName = "ecc-$version-windows-amd64.zip"
+
           New-Item -ItemType Directory -Force -Path release
           Copy-Item -Path ecc.exe -Destination release/
           Copy-Item -Path assets -Destination release/ -Recurse
-          Compress-Archive -Path release/* -DestinationPath ecc-windows-amd64.zip
+          Copy-Item -Path install.ps1 -Destination release/
+          Copy-Item -Path uninstall.ps1 -Destination release/
+          Copy-Item -Path README.md -Destination release/
+
+          # 创建版本信息文件
+          @"
+          ECC Fan Controller $version
+          Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')
+          Commit: ${{ github.sha }}
+          "@ | Out-File -FilePath release/VERSION.txt -Encoding utf8
+
+          # 打包
+          Compress-Archive -Path release/* -DestinationPath $zipName
+
+          # 生成 SHA256 校验和
+          $hash = (Get-FileHash -Path $zipName -Algorithm SHA256).Hash
+          "$hash  $zipName" | Out-File -FilePath SHA256SUMS.txt -Encoding utf8
+
+          Write-Host "Package: $zipName"
+          Write-Host "SHA256: $hash"
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag }}
           name: Release ${{ github.event.inputs.tag }}
-          files: ecc-windows-amd64.zip
+          files: |
+            ecc-${{ github.event.inputs.tag }}-windows-amd64.zip
+            SHA256SUMS.txt
+          body: |
+            ## ECC Fan Controller ${{ github.event.inputs.tag }}
+
+            ### 下载与安装
+            1. 下载 `ecc-${{ github.event.inputs.tag }}-windows-amd64.zip`
+            2. 解压到任意目录
+            3. 右键 `install.ps1` → 以管理员身份运行 PowerShell
+            4. 按提示完成安装
+
+            ### 使用说明
+            - 双击桌面快捷方式启动程序
+            - 浏览器自动打开控制面板 (http://localhost:8765)
+            - 在控制面板中设置开机自启、调整风扇曲线
+
+            ### 卸载
+            运行 `uninstall.ps1` 脚本（位于安装目录或解压目录）
+
+            ### 校验文件完整性
+            ```powershell
+            # 验证 SHA256
+            (Get-FileHash ecc-${{ github.event.inputs.tag }}-windows-amd64.zip).Hash
+            # 对比 SHA256SUMS.txt 中的值
+            ```
+
+            ### 更新日志
+            查看 [提交历史](https://github.com/${{ github.repository }}/commits/${{ github.event.inputs.tag }}) 了解详细变更。
