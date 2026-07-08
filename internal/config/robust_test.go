@@ -55,7 +55,8 @@ func TestLoadCorruptJSONFallsBackToPickle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg := Load(paths.Paths{StateDir: dir, ConfigPath: cfgPath, LegacyData: datPath})
+	result := Load(paths.Paths{StateDir: dir, ConfigPath: cfgPath, LegacyData: datPath})
+	cfg := result.Config
 	if cfg.ManualSpeed != 77 {
 		t.Fatalf("manual_speed=%d, want 77 from migrated pickle (corrupt JSON must not shadow legacy data)", cfg.ManualSpeed)
 	}

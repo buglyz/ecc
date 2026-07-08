@@ -86,7 +86,8 @@ func TestLoadReadsPickleFromStateDir(t *testing.T) {
 		ConfigPath: filepath.Join(dir, "config.json"),
 		LegacyData: dataPath,
 	}
-	cfg := Load(p)
+	result := Load(p)
+	cfg := result.Config
 	if cfg.Strategy != "max" || cfg.ManualSpeed != 77 {
 		t.Fatalf("loaded pickle strategy=%q speed=%d, want max/77", cfg.Strategy, cfg.ManualSpeed)
 	}

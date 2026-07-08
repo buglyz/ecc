@@ -55,7 +55,7 @@ func TestHandleConfigClampsManualSpeedAndPersists(t *testing.T) {
 		t.Fatalf("manual_speed=%d, want clamped to 100", got)
 	}
 	// Verify it was written to disk.
-	reloaded := config.Load(server.paths)
+	reloaded := config.Load(server.paths).Config
 	if reloaded.ManualSpeed != 100 || !reloaded.ManualEnabled {
 		t.Fatalf("persisted manual_speed=%d enabled=%t, want 100/true", reloaded.ManualSpeed, reloaded.ManualEnabled)
 	}

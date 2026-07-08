@@ -3,11 +3,14 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"math"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/buglyz/ecc/internal/controller"
 	"github.com/buglyz/ecc/internal/paths"
@@ -45,23 +48,58 @@ func Default() Config {
 	}
 }
 
-func Load(p paths.Paths) Config {
+// LoadResult 包含配置加载的结果和可能的错误信息
+type LoadResult struct {
+	Config         Config
+	CorruptedFiles []string // 损坏的配置文件路径（已备份）
+}
+
+// Load 加载配置文件，优先尝试 JSON，回退到 pickle。
+// 如果主配置损坏，会备份为 .corrupted.{timestamp} 并返回默认配置。
+func Load(p paths.Paths) LoadResult {
+	result := LoadResult{Config: Default()}
+
+	// 尝试 JSON 候选
 	for _, candidate := range jsonCandidates(p) {
 		if _, err := os.Stat(candidate); err == nil {
 			if cfg, ok := loadJSON(candidate); ok {
-				return Normalize(cfg)
+				result.Config = Normalize(cfg)
+				return result
 			}
+			// JSON 主配置存在但损坏：备份并标记
+			backupCorruptedConfig(candidate)
+			result.CorruptedFiles = append(result.CorruptedFiles, candidate)
 			// 主 config 损坏不应静默回落默认并丢弃可迁移的 legacy pickle 数据：
 			// 跳出 JSON 候选、继续尝试 pickle 候选，全部失败才回落 Default()。
 			break
 		}
 	}
+
+	// 尝试 pickle 候选
 	for _, candidate := range pickleCandidates(p) {
-		if cfg, ok := loadPickle(candidate); ok {
-			return Normalize(cfg)
+		if _, err := os.Stat(candidate); err == nil {
+			if cfg, ok := loadPickle(candidate); ok {
+				result.Config = Normalize(cfg)
+				return result
+			}
+			// pickle 存在但损坏：备份并标记
+			backupCorruptedConfig(candidate)
+			result.CorruptedFiles = append(result.CorruptedFiles, candidate)
 		}
 	}
-	return Default()
+
+	// 全部失败，返回默认配置
+	return result
+}
+
+// backupCorruptedConfig 将损坏的配置文件备份为 .corrupted.{timestamp}
+func backupCorruptedConfig(path string) {
+	timestamp := time.Now().Format("20060102-150405")
+	backupPath := fmt.Sprintf("%s.corrupted.%s", path, timestamp)
+	if err := os.Rename(path, backupPath); err != nil {
+		// 备份失败也不阻止启动，但记录到标准错误
+		log.Printf("配置备份失败: %s -> %s: %v", path, backupPath, err)
+	}
 }
 
 func Save(p paths.Paths, cfg Config) error {

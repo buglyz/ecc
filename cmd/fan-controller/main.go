@@ -50,7 +50,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg := config.Load(runtimePaths)
+	loadResult := config.Load(runtimePaths)
+	cfg := loadResult.Config
+
+	// 如果配置文件损坏，记录警告并稍后通知用户
+	var configCorrupted bool
+	if len(loadResult.CorruptedFiles) > 0 {
+		configCorrupted = true
+		for _, path := range loadResult.CorruptedFiles {
+			logger.Printf("警告: 配置文件已损坏并备份: %s", path)
+		}
+		logger.Print("已使用默认配置启动")
+	}
+
 	if err := config.Save(runtimePaths, cfg); err != nil {
 		logger.Printf("配置保存失败: %v", err)
 	}
@@ -110,6 +122,11 @@ func main() {
 	if !*noTray {
 		onShow := func() { openBrowser(dashURL) }
 		trayIcon := tray.New(onShow, triggerExit)
+
+		// 如果配置损坏，闪动图标提醒用户（日志已记录详细信息）
+		if configCorrupted {
+			trayIcon.Alert()
+		}
 
 		// Set write failure handler to alert via tray icon
 		fan.SetWriteFailureHandler(func() {

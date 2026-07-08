@@ -33,7 +33,8 @@ func TestLoadMigratesLegacyJSONNumericStrings(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(legacyDir, "config.json"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cfg := Load(paths.Paths{StateDir: state, ConfigPath: filepath.Join(state, "config.json"), LegacyData: filepath.Join(state, "data.dat"), ExecutableDir: legacyDir})
+	result := Load(paths.Paths{StateDir: state, ConfigPath: filepath.Join(state, "config.json"), LegacyData: filepath.Join(state, "data.dat"), ExecutableDir: legacyDir})
+	cfg := result.Config
 	if cfg.Curve[0] != (controller.Point{45, 35}) || cfg.Curve[4] != (controller.Point{90, 100}) {
 		t.Fatalf("curve=%v, want migrated endpoints", cfg.Curve)
 	}
@@ -48,5 +49,51 @@ func TestConfigCloneDeepCopiesPresets(t *testing.T) {
 	clone.Presets["balanced"] = PresetConfig{Curve: []controller.Point{{30, 1}}, Strategy: "cpu"}
 	if cfg.Presets["balanced"].Strategy == "cpu" {
 		t.Fatal("Clone shared preset map with original config")
+	}
+}
+
+func TestLoadBacksUpCorruptedConfig(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+
+	// 写入损坏的 JSON
+	if err := os.WriteFile(configPath, []byte("{invalid json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result := Load(paths.Paths{StateDir: dir, ConfigPath: configPath})
+
+	// 应返回默认配置
+	if !reflect.DeepEqual(result.Config.Curve, controller.DefaultCurve) {
+		t.Fatalf("损坏配置未回退到默认: curve=%v", result.Config.Curve)
+	}
+
+	// 应标记损坏文件
+	if len(result.CorruptedFiles) != 1 {
+		t.Fatalf("CorruptedFiles=%d, want 1", len(result.CorruptedFiles))
+	}
+	if result.CorruptedFiles[0] != configPath {
+		t.Fatalf("CorruptedFiles[0]=%s, want %s", result.CorruptedFiles[0], configPath)
+	}
+
+	// 原配置文件应已备份（重命名）
+	if _, err := os.Stat(configPath); err == nil {
+		t.Fatal("损坏的配置文件未被备份（仍存在原路径）")
+	}
+
+	// 备份文件应存在
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var backupFound bool
+	for _, entry := range entries {
+		if filepath.Ext(entry.Name()) == ".corrupted" || len(entry.Name()) > len("config.json.corrupted.") {
+			backupFound = true
+			break
+		}
+	}
+	if !backupFound {
+		t.Fatal("未找到备份文件（.corrupted.*）")
 	}
 }
