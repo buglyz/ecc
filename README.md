@@ -302,18 +302,3 @@ internal/
 | 配置丢失/重置 | 配置文件曾损坏并被备份为 `config.json.corrupted.<时间戳>`，可在状态目录找回。 |
 
 日志位置：`%LOCALAPPDATA%\FanController\fan_controller.log`（按大小轮转，保留最近若干份）。
-
-## 📋 重构路线图
-
-- [x] **拆 `pickle.go`** — 将 `config.go` 中 ~500 行 pickle 解析器独立为 `internal/config/pickle.go`
-- [x] **前端抽离** — `dashboard.go` 内联的 CSS/HTML/JS 迁移到 `web/`，通过 `go:embed` 嵌入
-- [x] **API 禁止跨域** — `/api/*` 端点校验 `Origin`，拒绝非 localhost 来源
-- [x] **Google Fonts 本地化** — 字体本地引用，离线场景 UI 不崩
-- [x] **轮询间隔可配置** — `--interval` 参数
-- [x] **font 渲染测试** — 为 `tray/font_windows.go` 补跨平台可测的纯计算单元测试
-- [x] **EC 写入失败告警** — 写入失败时托盘闪动提醒
-- [x] **温度传感器掉线恢复** — 连续失败时指数退避重启 + 告警
-- [x] **风扇转速反馈** — 通过 WMI `RW_GMWMI` 读取实际 RPM 并在 UI 显示
-- [x] **配置损坏自愈** — 加载时检测损坏，自动备份并回退默认配置
-- [x] **EC 写入驱动失败检测** — 识别 `ec-probe` 退出码 0 但驱动未加载的假成功
-- [x] **依赖安全** — CI 集成 `govulncheck`，启用 Dependabot 自动更新
