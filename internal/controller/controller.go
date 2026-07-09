@@ -10,26 +10,32 @@ import (
 )
 
 type FanController struct {
-	reader         SensorReader
-	writer         FanWriter
-	fanReader      FanReader
-	logger         *log.Logger
+	reader    SensorReader
+	writer    FanWriter
+	fanReader FanReader
+	logger    *log.Logger
 
-	writeMu         sync.Mutex
-	mu              sync.RWMutex
-	curve           []Point
-	strategy        string
-	manualSpeed     *int
-	version         uint64
-	latest          Latest
-	pollInterval    time.Duration
-	onWriteFailure  func()
+	writeMu        sync.Mutex
+	mu             sync.RWMutex
+	curve          []Point
+	strategy       string
+	manualSpeed    *int
+	version        uint64
+	latest         Latest
+	pollInterval   time.Duration
+	onWriteFailure func()
 
 	history *History
 	nudge   chan struct{}
 	ctx     context.Context
 	cancel  context.CancelFunc
 	done    chan struct{}
+
+	// RPM 读取节流：GMWMI 每次 ReadRPM 都走一次完整 WMI 查询（几十~几百毫秒），
+	// 而采样循环每秒调用一次会带来可感知开销。这里把硬件查询降到 RPMReadInterval
+	// 一次，中间的采样复用上次读到的值。仅在控制循环 goroutine 内访问，无需加锁。
+	lastRPM     *uint16
+	lastRPMTime time.Time
 }
 
 type modeState struct {
@@ -168,21 +174,27 @@ func (c *FanController) setLatest(cpu, gpu, targetTemp *float64, speed int, rpm 
 	c.history.Add(HistorySample{Time: now, CPU: copyFloat(cpu), GPU: copyFloat(gpu), TargetTemp: copyFloat(targetTemp), Speed: speed, ActualRPM: rpm})
 }
 
+// readRPM 返回最近一次读到的风扇转速，并按 RPMReadInterval 节流硬件查询。
+// GMWMI 的一次 ReadRPM 会走完整 WMI 查询（开销可达数百毫秒），采样循环每秒
+// 调用不该每次都真查；节流窗口内直接复用上次结果。仅在控制循环 goroutine
+// 内调用，lastRPM/lastRPMTime 无并发访问。
 func (c *FanController) readRPM() *uint16 {
 	if c.fanReader == nil {
 		return nil
 	}
-	// Try to read actual RPM from hardware
+	if !c.lastRPMTime.IsZero() && time.Since(c.lastRPMTime) < RPMReadInterval {
+		return c.lastRPM
+	}
+	c.lastRPMTime = time.Now()
 	rpm, ok := c.fanReader.ReadRPM(c.ctx, ECRegFan1RPMLow, ECRegFan1RPMHigh)
-	if !ok {
-		return nil
+	// 硬件不支持或读到 0 都记为「无数据」(nil)，避免 UI 显示误导性的 0 RPM。
+	// 无论成功与否都刷新缓存：失败时缓存 nil，节流窗口内不再重试白白拖慢采样。
+	if !ok || rpm == 0 {
+		c.lastRPM = nil
+	} else {
+		c.lastRPM = &rpm
 	}
-	// If hardware returns 0, it likely means RPM registers are not available
-	// Return nil to indicate no data rather than showing misleading 0 RPM
-	if rpm == 0 {
-		return nil
-	}
-	return &rpm
+	return c.lastRPM
 }
 
 func (c *FanController) run() {

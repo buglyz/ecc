@@ -17,14 +17,18 @@ const (
 	LoopDriftTolerance  = 5 * time.Second
 	ExpectedCycleJitter = 1300 * time.Millisecond
 	HeartbeatInterval   = 30 * time.Second
-	HistoryMaxSamples   = 28800
-	CPUWeight           = 0.7
-	CurvePoints         = 5
-	CurveTempMin        = 30.0
-	CurveTempMax        = 100.0
-	CurveSpeedMin       = 0.0
-	CurveSpeedMax       = 100.0
-	DefaultStrategy     = "weighted"
+	// RPMReadInterval 限制 RPM 硬件查询频率。RPM 读取（GMWMI 走一次完整 WMI
+	// 查询，开销可达数十~数百毫秒）无需每次采样都做，节流到该间隔，两次之间
+	// 复用上次结果，避免每秒一次 WMI 查询带来的持续 CPU 开销。
+	RPMReadInterval   = 5 * time.Second
+	HistoryMaxSamples = 28800
+	CPUWeight         = 0.7
+	CurvePoints       = 5
+	CurveTempMin      = 30.0
+	CurveTempMax      = 100.0
+	CurveSpeedMin     = 0.0
+	CurveSpeedMax     = 100.0
+	DefaultStrategy   = "weighted"
 )
 
 var DefaultCurve = []Point{{40, 30}, {55, 40}, {70, 60}, {80, 85}, {90, 100}}

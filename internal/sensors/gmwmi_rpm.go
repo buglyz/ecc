@@ -2,10 +2,18 @@ package sensors
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/yusufpapurcu/wmi"
+)
+
+// GMWMI BufferBytes 中风扇 RPM 的字节偏移（小端 16 位）。
+// 这是 WMI RW_GMWMI 返回的数据缓冲里的数组下标，与 EC 寄存器地址是
+// 两套完全不同的寻址空间，切勿把 controller 里的 EC 寄存器常量（如
+// ECRegFan1RPMLow=0xD0）当作这里的偏移使用——0xD0=208 会直接越界。
+const (
+	gmwmiCPUFanOffset = 0x0C // BufferBytes[0x0C:0x0E] = CPU 风扇 RPM
+	gmwmiGPUFanOffset = 0x10 // BufferBytes[0x10:0x12] = GPU 风扇 RPM
 )
 
 // GMWMIReader 通过 WMI RW_GMWMI 接口读取风扇 RPM
@@ -41,7 +49,7 @@ func (r *GMWMIReader) ReadRPM(ctx context.Context, cpuOffset, gpuOffset int) (cp
 		return 0, 0
 	}
 
-	if len(dst) == 0 || len(dst[0].BufferBytes) < gpuOffset+2 {
+	if len(dst) == 0 {
 		if r.logger != nil {
 			r.logger.Print("GMWMI 返回数据不足")
 		}
@@ -49,17 +57,20 @@ func (r *GMWMIReader) ReadRPM(ctx context.Context, cpuOffset, gpuOffset int) (cp
 	}
 
 	buf := dst[0].BufferBytes
-
-	// 从 BufferBytes 读取 RPM（小端序 16-bit）
-	if cpuOffset >= 0 && cpuOffset+1 < len(buf) {
-		cpuRPM = uint16(buf[cpuOffset]) | (uint16(buf[cpuOffset+1]) << 8)
-	}
-
-	if gpuOffset >= 0 && gpuOffset+1 < len(buf) {
-		gpuRPM = uint16(buf[gpuOffset]) | (uint16(buf[gpuOffset+1]) << 8)
-	}
-
+	cpuRPM = parseRPM(buf, cpuOffset)
+	gpuRPM = parseRPM(buf, gpuOffset)
 	return cpuRPM, gpuRPM
+}
+
+// parseRPM 从 buf 的 offset 处按小端序读取 16 位 RPM。
+// offset 越界或为负时返回 0。注意边界条件是 offset+1 < len(buf)（即
+// 需要 offset 和 offset+1 两个字节都存在），此前误写成不含等号的判断
+// 会漏读缓冲区最后一对字节。
+func parseRPM(buf []byte, offset int) uint16 {
+	if offset < 0 || offset+1 >= len(buf) {
+		return 0
+	}
+	return uint16(buf[offset]) | (uint16(buf[offset+1]) << 8)
 }
 
 // Close 实现 io.Closer 接口
@@ -80,27 +91,18 @@ func NewGMWMIFanReader(logger *log.Logger) *GMWMIFanReader {
 	}
 }
 
-// ReadRPM 实现 FanReader 接口
-// registerLow 和 registerHigh 被解释为十六进制偏移字符串
-// 例如 "0x0C" 和 "0x0D" 表示从 BufferBytes[0x0C:0x0E] 读取
-// 只使用 registerLow 参数，registerHigh 被忽略（因为总是读取 2 字节）
-// 返回 CPU 风扇 RPM
+// ReadRPM 实现 controller.FanReader 接口，返回 CPU 风扇实际转速。
+//
+// 注意：接口的 registerLow/registerHigh 参数是为「EC 寄存器地址」寻址方式
+// 设计的（ec-probe 那条路径会用到），但 GMWMI 走的是 WMI BufferBytes 数组，
+// 两者是完全不同的寻址空间。此前的实现错误地把 EC 寄存器地址（如 "0xD0"=208）
+// Sscanf 成数组下标，导致每次都越界、RPM 恒为 0、功能实际从未生效。
+// 这里直接忽略这两个参数，使用正确的 GMWMI BufferBytes 偏移常量。
 func (r *GMWMIFanReader) ReadRPM(ctx context.Context, registerLow, registerHigh string) (uint16, bool) {
-	// 解析偏移量
-	var cpuOffset, gpuOffset int
-	// registerLow 表示 CPU RPM 偏移，默认 0x0C
-	if _, err := fmt.Sscanf(registerLow, "0x%x", &cpuOffset); err != nil {
-		cpuOffset = 0x0C
-	}
-	// GPU 偏移固定为 0x10
-	gpuOffset = 0x10
-
-	cpuRPM, _ := r.reader.ReadRPM(ctx, cpuOffset, gpuOffset)
-
+	cpuRPM, _ := r.reader.ReadRPM(ctx, gmwmiCPUFanOffset, gmwmiGPUFanOffset)
 	if cpuRPM == 0 {
 		return 0, false
 	}
-
 	return cpuRPM, true
 }
 
