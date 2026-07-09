@@ -2,8 +2,8 @@ package dashboard
 
 import (
 	"context"
-	"encoding/json"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -36,8 +36,29 @@ type Server struct {
 	controller *controller.FanController
 	logger     *log.Logger
 	httpServer *http.Server
+	startup    startupController
 
 	startupCached atomic.Bool
+}
+
+type startupController interface {
+	IsEnabled(identifier string) bool
+	Add(targetPath, identifier string) error
+	Remove(identifier string) error
+}
+
+type systemStartupController struct{}
+
+func (systemStartupController) IsEnabled(identifier string) bool {
+	return startup.IsEnabled(identifier)
+}
+
+func (systemStartupController) Add(targetPath, identifier string) error {
+	return startup.Add(targetPath, identifier)
+}
+
+func (systemStartupController) Remove(identifier string) error {
+	return startup.Remove(identifier)
 }
 
 type stateResponse struct {
@@ -75,7 +96,7 @@ func New(addr string, p paths.Paths, cfg *config.Config, fan *controller.FanCont
 	if logger == nil {
 		logger = log.Default()
 	}
-	return &Server{addr: addr, paths: p, cfg: cfg, controller: fan, logger: logger}
+	return &Server{addr: addr, paths: p, cfg: cfg, controller: fan, logger: logger, startup: systemStartupController{}}
 }
 
 func (s *Server) Start() error {
@@ -92,7 +113,7 @@ func (s *Server) Start() error {
 		return err
 	}
 	s.actualAddr = listener.Addr().String()
-	s.startupCached.Store(startup.IsEnabled(startup.Identifier))
+	s.startupCached.Store(s.startup.IsEnabled(startup.Identifier))
 	s.httpServer = &http.Server{Addr: s.actualAddr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second}
 	s.logger.Printf("Web 控制台已启动: http://%s", s.actualAddr)
 	go func() {
@@ -308,15 +329,15 @@ func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
 	}
 	var err error
 	if req.Enabled {
-		err = startup.Add(s.paths.StartupTarget, startup.Identifier)
+		err = s.startup.Add(s.paths.StartupTarget, startup.Identifier)
 	} else {
-		err = startup.Remove(startup.Identifier)
+		err = s.startup.Remove(startup.Identifier)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	enabled := startup.IsEnabled(startup.Identifier)
+	enabled := s.startup.IsEnabled(startup.Identifier)
 	s.startupCached.Store(enabled)
 	s.writeJSON(w, map[string]any{"ok": true, "startup": enabled})
 }

@@ -22,7 +22,9 @@ func newTestServer(t *testing.T) (*Server, config.Config) {
 	p := paths.Paths{StateDir: dir, ConfigPath: filepath.Join(dir, "config.json"), LegacyData: filepath.Join(dir, "data.dat")}
 	cfg := config.Normalize(config.Default())
 	fan := controller.NewFanController(staticReader{}, okWriter{}, cfg.Curve, cfg.Strategy, 0, log.New(os.Stderr, "", 0))
-	return New("127.0.0.1:0", p, &cfg, fan, log.New(os.Stderr, "", 0)), cfg
+	server := New("127.0.0.1:0", p, &cfg, fan, log.New(os.Stderr, "", 0))
+	server.startup = &fakeStartupController{}
+	return server, cfg
 }
 
 func postJSON(t *testing.T, handler http.HandlerFunc, body any) *httptest.ResponseRecorder {
