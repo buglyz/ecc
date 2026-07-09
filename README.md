@@ -2,73 +2,78 @@
 
 [![Build and Test](https://github.com/buglyz/ecc/actions/workflows/build.yml/badge.svg)](https://github.com/buglyz/ecc/actions/workflows/build.yml) [![Manual Release](https://github.com/buglyz/ecc/actions/workflows/release.yml/badge.svg)](https://github.com/buglyz/ecc/actions/workflows/release.yml)
 
-笔记本 EC（Embedded Controller）风扇控制器，通过写入 EC 寄存器实现自定义风扇转速曲线。现已重构并搭载全新的现代化 Web UI。
+笔记本 EC（Embedded Controller）风扇控制器：通过写入 EC 寄存器实现自定义风扇转速曲线，搭载现代化玻璃态 Web UI。纯 Go 标准库实现，单文件运行，无外部运行时依赖。
 
-## 由[此项目](https://www.bilibili.com/video/BV1oaaoeFEzY/?share_source=copy_web&vd_source=02adb0cd5f8f9003d535f030aa4f3266)修改而来
+> 由[此 B 站项目](https://www.bilibili.com/video/BV1oaaoeFEzY/?share_source=copy_web&vd_source=02adb0cd5f8f9003d535f030aa4f3266)修改而来。
+
+## 目录
+
+- [预览](#预览)
+- [核心特性](#-核心特性)
+- [快速开始](#-快速开始)
+- [命令行参数](#命令行参数)
+- [工作原理](#-工作原理)
+- [硬件兼容性](#️-硬件兼容性)
+- [从源码编译](#-从源码编译)
+- [项目结构](#-项目结构)
+- [故障排查](#-故障排查)
 
 ## 预览
-![PixPin_2026-06-14_18-58-40.png](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMJai6J77BSz8rw8Bt4twWfKI-JOY0AAsUQaxuqN3hViRKhQeE5-f4BAAMCAAN3AAM8BA.png)
-![PixPin_2026-06-14_18-58-43.png](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMLai6J89hSBEUPxtFxgOsAAX-gFk9AAALGEGsbqjd4VWGbIgQZAy2qAQADAgADdwADPAQ.png)
+
+![预览 1](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMJai6J77BSz8rw8Bt4twWfKI-JOY0AAsUQaxuqN3hViRKhQeE5-f4BAAMCAAN3AAM8BA.png)
+![预览 2](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMLai6J89hSBEUPxtFxgOsAAX-gFk9AAALGEGsbqjd4VWGbIgQZAy2qAQADAgADdwADPAQ.png)
 
 ## 🌟 核心特性
 
-- 🎨 **现代化玻璃态 Web UI**：采用 Fluent/Glassmorphism 设计美学，支持深色/浅色自适应主题切换及完美的响应式布局。
-- 📈 **双轨制风扇曲线编辑器**：支持在可视化画布上直观拖拽控制节点，也支持在下方的数据表格中精确键入温度/转速数值，双向实时同步。
-- 📊 **实时硬件监控图表**：动态展示 CPU、GPU 温度与风扇响应趋势，支持自定义回溯时间范围（1 分钟至 480 分钟）。
-- ⚙️ **多模式智能调速**：
-  - 自动模式：基于多种温度传感策略（加权、取最大值、仅 CPU、仅 GPU）动态计算。
-  - 手动模式：一键锁定绝对转速百分比。
-- 🕹️ **自定义场景预设**：内置 静音 / 平衡 / 性能 三大预设，支持一键创建、修改、保存个人专属挡位配置。
-- 🚀 **系统级无缝集成**：
-  - 动态系统托盘图标（实时监控展示与右键快捷菜单）。
-  - 开机自启动管理（基于 Windows 任务计划程序，彻底免除 UAC 烦人弹窗）。
-  - 无依赖、纯本地单文件运行，启动自动触发管理员提权。
-- 🔒 **API 跨域防护**：`/api/*` 端点自动校验 Origin 与 Host 头，拒绝来自其他网站的跨站请求，防止恶意网页篡改风扇配置。
+- 🎨 **现代化玻璃态 Web UI** — Fluent/Glassmorphism 设计，深色/浅色自适应，响应式布局。
+- 📈 **双轨制曲线编辑器** — 画布上拖拽控制点，或在表格中精确键入温度/转速，双向实时同步。
+- 📊 **实时监控图表** — CPU/GPU 温度与风扇响应趋势，回溯范围 1–480 分钟可调。
+- ⚙️ **多模式调速** — 自动模式支持加权 / 取最大值 / 仅 CPU / 仅 GPU 四种温度策略；手动模式一键锁定绝对转速。
+- 🕹️ **场景预设** — 内置 静音 / 平衡 / 性能 三挡，支持创建、修改、保存个人挡位。
+- 🚀 **系统级集成** — 动态托盘图标、开机自启动（任务计划程序，免 UAC 弹窗）、启动自动提权。
+- 🔒 **API 跨域防护** — `/api/*` 端点校验来源，拒绝恶意网页 CSRF 篡改风扇配置。
+- 🛡️ **健壮性** — 温度传感器掉线指数退避重启、EC 写入失败托盘告警、配置损坏自动备份恢复。
 
-## 运行要求
+## 🚀 快速开始
 
-- Windows 10/11
-- 管理员权限（EC 寄存器访问需要内核驱动）
-- `assets/` 目录需包含以下文件（随 exe 一起分发）：
-  - `ec-probe.exe` — NBFC EC 写入工具
-  - `nbfc.exe` — NBFC 主程序
-  - `StagWare.FanControl.dll`
-  - `NLog.dll`
-  - `clipr.dll`
-  - `Plugins/` — NBFC 硬件插件
-  - `LibreHardwareMonitorLib.dll` — 温度读取
+### 运行要求
 
-## 使用
+- Windows 10 / 11（x64）
+- 管理员权限（访问 EC 寄存器需加载内核驱动）
+- `ecc.exe` 同目录下的 `assets/` 需包含以下随包分发的文件：
 
-双击 `ecc.exe`：
-1. 自动请求管理员权限（UAC 提示）
-2. 系统托盘出现图标
-3. 右键任务栏窗口打开webui
+  | 文件 | 作用 |
+  |------|------|
+  | `ec-probe.exe` | NBFC 的 EC 读写工具（核心） |
+  | `LibreHardwareMonitorLib.dll` | 读取 CPU/GPU 温度 |
+  | `nbfc.exe` | NBFC 主程序 |
+  | `StagWare.FanControl.dll` / `NLog.dll` / `clipr.dll` | NBFC 依赖库 |
+  | `Plugins/` | NBFC 硬件插件 |
+
+### 安装与使用
+
+1. 从 [Releases](https://github.com/buglyz/ecc/releases) 下载并解压，或右键 `install.ps1` 以管理员身份运行 PowerShell 一键安装。
+2. 双击 `ecc.exe` 启动，确认 UAC 提权提示。
+3. 系统托盘出现图标，浏览器自动打开控制台 `http://127.0.0.1:8765`。
+4. 在控制台中调整风扇曲线、切换预设、设置开机自启动。
+
+> 卸载：运行 `uninstall.ps1`（加 `-KeepConfig` 可保留配置）。
 
 ### 命令行参数
 
-```
---port 8765       Web 控制台端口（默认 8765）
---dry-run         仅记录 EC 写入，不实际操作硬件
---simulate        使用模拟温度数据（同时启用 dry-run）
---skip-admin      跳过管理员权限检查
---no-tray         禁用系统托盘图标
---no-browser      启动时不自动打开浏览器
-```
-
-## 编译
-
-```bash
-go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
-```
-
-无外部依赖，纯 Go 标准库。
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `--port` | `8765` | Web 控制台端口 |
+| `--interval` | `1000` | 采样间隔（毫秒） |
+| `--dry-run` | 关 | 仅记录 EC 写入，不操作硬件 |
+| `--simulate` | 关 | 使用模拟温度数据（同时启用 dry-run） |
+| `--skip-admin` | 关 | 跳过管理员权限检查 |
+| `--no-tray` | 关 | 禁用系统托盘图标 |
+| `--no-browser` | 关 | 启动时不自动打开浏览器 |
 
 ## 🔬 工作原理
 
-本程序的核心是一个「读温度 → 算目标转速 → 写 EC 寄存器」的闭环控制循环。下面从数据流角度详细拆解。
-
-### 整体数据流
+本程序的核心是一个「读温度 → 算目标转速 → 写 EC 寄存器」的闭环控制循环。
 
 ```
                     ┌─────────────────────────────────────────────┐
@@ -230,7 +235,7 @@ EC 固件
 
 - 内嵌 HTTP 服务器（默认 `127.0.0.1:8765`）提供单页 Web 控制台，前端通过 `go:embed` 打进 exe。
 - 前端每秒轮询 `/api/state` 拉取最新温度/转速/历史，用 Canvas 画实时曲线；改曲线时 POST `/api/config`。
-- 配置以 JSON 持久化到 `%AppData%\ecc\`，写入采用「临时文件 + 原子重命名」防止写一半断电损坏；加载时若发现损坏会自动备份为 `.corrupted.<时间戳>` 并回退默认配置，同时闪动托盘图标提醒。
+- 配置以 JSON 持久化到 `%LOCALAPPDATA%\FanController\`，写入采用「临时文件 + 原子重命名」防止写一半断电损坏；加载时若发现损坏会自动备份为 `.corrupted.<时间戳>` 并回退默认配置，同时闪动托盘图标提醒。
 - 所有写接口 (`/api/config`、`/api/preset`、`/api/startup`) 校验 `Origin` 头，只允许本机回环来源，防止恶意网页 CSRF 篡改风扇设置。
 
 ### 关键常量一览（`internal/controller/constants.go`）
@@ -245,52 +250,70 @@ EC 固件
 | `ECRegFan1 / Fan2` | 0x2C / 0x2D | 风扇转速寄存器 |
 | `ECFanRelease` | 0xFF | 释放控制、交还固件 |
 
-## EC 寄存器
+## ⚠️ 硬件兼容性
 
-- `0x2C` — Fan1 转速（0-100 百分比，0xFF 释放控制）
-- `0x2D` — Fan2 转速（同上）
+**风扇控制**（写 EC 寄存器 `0x2C` / `0x2D`）：
+- ✅ 本项目目标机型已验证：写入立即生效，可用管理员 PowerShell 通过 `ec-probe read` 回读确认。
+- ⚠️ EC 寄存器地址因机型而异。换其他笔记本需自行逆向探测正确地址（见 [5.2](#52-本程序使用的寄存器地址)），否则写入无效甚至误触其他功能。
+- ⚠️ 部分机型寄存器只写不可回读，程序对此已兼容（不依赖回读判定成功）。
 
-## 项目结构
+**风扇转速反馈（RPM）**：
+- ✅ **神舟笔记本（已测试）**：通过 WMI `RW_GMWMI` 接口读取，CPU/GPU 双风扇转速完美显示。
+- ⚠️ 其他品牌可能使用不同接口，需要适配。
+- ℹ️ RPM 读取不可用时程序自动检测并优雅降级（UI 不显示 RPM），不影响调速功能。
+
+## 🛠 从源码编译
+
+```bash
+go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
+```
+
+- 无外部依赖，纯 Go 标准库 + 少量 WMI/系统调用封装。
+- `-H windowsgui` 让程序以 GUI 子系统启动（不弹控制台窗口）。
+- 编译后需把 `assets/` 目录放到 `ecc.exe` 同级。
+
+## 📂 项目结构
 
 ```
 cmd/fan-controller/     程序入口
 internal/
   admin/                管理员提权 + DPI 感知
-  config/               配置加载/保存/归一化（JSON + pickle 兼容）
-  controller/           风扇控制循环核心逻辑
-  dashboard/            Web 控制台（HTTP API + 前端）
-  ec/                   EC 寄存器写入（调用 ec-probe.exe）
+  config/               配置加载/保存/归一化（JSON + pickle 兼容），损坏自动备份
+  controller/           风扇控制循环核心逻辑（采样/策略/插值/滞回/心跳）
+  dashboard/            Web 控制台（HTTP API + go:embed 前端）
+  ec/                   EC 寄存器读写（调用 ec-probe.exe）
   logging/              日志轮转
   paths/                运行时路径发现
   process/              Windows 隐藏窗口进程属性
-  sensors/              温度读取（PowerShell + LibreHardwareMonitor）
+  sensors/              温度读取（PowerShell + LHM）+ RPM 反馈（WMI GMWMI）
   startup/              开机自启动（任务计划程序）
   tray/                 系统托盘图标（Win32 Shell_NotifyIcon）
 ```
 
+## 🔧 故障排查
+
+| 现象 | 可能原因与排查 |
+|------|--------------|
+| 风扇转速不变 | 驱动未加载或寄存器地址不对。管理员 PowerShell 跑 `ec-probe read 0x2C`；若报 `unable to load the winring0 driver` 则驱动问题，若读值不随写入变化则地址不匹配本机型。 |
+| 启动即退出 | 缺少管理员权限或 `assets/` 文件不全。查看日志 `%LOCALAPPDATA%\FanController\fan_controller.log`。 |
+| UI 显示温度为空 | LHM/PowerShell 桥接失败。日志会记录退避重启信息；确认 `LibreHardwareMonitorLib.dll` 存在。 |
+| UI 不显示 RPM | 本机型非 GMWMI 接口，属正常降级，不影响调速。 |
+| 托盘图标闪红 | EC 写入失败告警，通常是驱动未加载，见第一行。 |
+| 配置丢失/重置 | 配置文件曾损坏并被备份为 `config.json.corrupted.<时间戳>`，可在状态目录找回。 |
+
+日志位置：`%LOCALAPPDATA%\FanController\fan_controller.log`（按大小轮转，保留最近若干份）。
+
 ## 📋 重构路线图
 
-- [x] **拆 `pickle.go`** — 将 `config.go` 中 ~500 行 pickle 解析器独立为 `internal/config/pickle.go`，`config.go` 只保留配置业务逻辑
-- [x] **前端抽离** — 将 `dashboard.go` 内联的 CSS/HTML/JS 迁移到 `web/` 目录，通过 `go:embed` 嵌入，`dashboard.go` 只留 HTTP handler
-- [x] **API 禁止跨域** — `/api/*` 端点校验 `Origin`/`Host` 头，拒绝非 localhost 来源的请求
-- [x] **Google Fonts 本地化** — 将外链字体下载到 `web/assets/` 本地引用，离线场景 UI 不崩
-- [x] **轮询间隔可配置** — 将 `time.After(time.Second)` 硬编码改为可配置的 `--interval` 参数
-- [x] **font 渲染测试** — 为 `tray/font_windows.go` 的 `renderText16` / glyphs 补跨平台可测的纯计算单元测试
-- [x] **EC 写入失败告警** — `writeSpeed` 返回 false 时托盘闪动/弹通知，不让用户对控制失效毫不知情
-- [x] **温度传感器掉线恢复** — PowerShell 进程连续失败时指数退避重启+告警，避免每秒白启动
-- [x] **风扇转速反馈** — 通过 WMI RW_GMWMI 接口读取实际风扇 RPM，Web UI 图表显示实时转速
-  - ✅ **神舟笔记本支持**：通过 Gaming WMI (RW_GMWMI) 接口读取 CPU 和 GPU 风扇实际转速
-  - ℹ️ **技术细节**：BufferBytes[0x0C-0x0D] = CPU RPM, BufferBytes[0x10-0x11] = GPU RPM
-
-## ⚠️ 硬件兼容性
-
-**风扇控制**：
-- ✅ 通过 EC 寄存器 (0x2C, 0x2D) 写入风扇转速百分比
-- ⚠️ 注意：部分硬件的 EC 寄存器是只写的，无法读回验证，但写入仍然有效
-
-**风扇转速反馈（RPM）**：
-- ✅ **神舟笔记本（已测试）**：通过 WMI RW_GMWMI 接口读取，完美支持
-- ⚠️ 其他品牌笔记本可能使用不同的接口，需要适配
-- ℹ️ 如果 RPM 读取不可用，程序会自动检测并优雅降级（不显示 RPM 信息）
-
-
+- [x] **拆 `pickle.go`** — 将 `config.go` 中 ~500 行 pickle 解析器独立为 `internal/config/pickle.go`
+- [x] **前端抽离** — `dashboard.go` 内联的 CSS/HTML/JS 迁移到 `web/`，通过 `go:embed` 嵌入
+- [x] **API 禁止跨域** — `/api/*` 端点校验 `Origin`，拒绝非 localhost 来源
+- [x] **Google Fonts 本地化** — 字体本地引用，离线场景 UI 不崩
+- [x] **轮询间隔可配置** — `--interval` 参数
+- [x] **font 渲染测试** — 为 `tray/font_windows.go` 补跨平台可测的纯计算单元测试
+- [x] **EC 写入失败告警** — 写入失败时托盘闪动提醒
+- [x] **温度传感器掉线恢复** — 连续失败时指数退避重启 + 告警
+- [x] **风扇转速反馈** — 通过 WMI `RW_GMWMI` 读取实际 RPM 并在 UI 显示
+- [x] **配置损坏自愈** — 加载时检测损坏，自动备份并回退默认配置
+- [x] **EC 写入驱动失败检测** — 识别 `ec-probe` 退出码 0 但驱动未加载的假成功
+- [x] **依赖安全** — CI 集成 `govulncheck`，启用 Dependabot 自动更新
