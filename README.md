@@ -87,8 +87,8 @@
                     │        │        ┌──────────┐      │        │
   RPM 反馈           │        └───────→│ 滞回/漂移 │←─────┘        │
 ┌──────────┐  实际转速 │                 │ 心跳判断  │              │
-│WMI GMWMI │───────→│                 └──────────┘              │
-└──────────┘        └─────────────────────────────────────────────┘
+│ec-probe  │───────→│                 └──────────┘              │
+│0xB0-0xB3 │        └─────────────────────────────────────────────┘
                               ↑                    ↓
                          ┌─────────┐         ┌──────────┐
                          │ Web UI  │←───────→│  配置     │
@@ -164,16 +164,16 @@ ec-probe.exe write -v 0x2C 0x32
 | `0x2C` | **Fan1 转速** | `0x00`–`0x64` (0–100) | 十进制百分比。`0x32`=50%，`0x64`=100% |
 | `0x2D` | **Fan2 转速** | `0x00`–`0x64` (0–100) | 同上，第二个风扇 |
 | `0x2C` / `0x2D` | **释放控制** | `0xFF` | 写 `0xFF` 交还固件自动调速 |
-| `0xD0` / `0xD1` | Fan1 实际转速 (RPM) | 只读 | 低字节 / 高字节，组合成 16 位 RPM |
-| `0xD2` / `0xD3` | Fan2 实际转速 (RPM) | 只读 | 低字节 / 高字节 |
+| `0xB0` / `0xB1` | Fan1 实际转速 (RPM) | 只读 | 低字节 / 高字节，小端组合成 16 位 RPM |
+| `0xB2` / `0xB3` | Fan2 实际转速 (RPM) | 只读 | 低字节 / 高字节 |
 
 > ⚠️ **这些地址是特定于本机型的**。不同厂商、不同型号笔记本的 EC 寄存器布局完全不同（`0x2C/0x2D` 是本项目目标机型逆向得到的地址）。换一台笔记本很可能需要重新用 [RWEverything](http://rweverything.com/) 之类工具逆向探测。定义见 `internal/controller/constants.go`：
 >
 > ```go
 > ECRegFan1        = "0x2C"   // Fan1 转速百分比
 > ECRegFan2        = "0x2D"   // Fan2 转速百分比
-> ECRegFan1RPMLow  = "0xD0"   // Fan1 RPM 低字节
-> ECRegFan1RPMHigh = "0xD1"   // Fan1 RPM 高字节
+> ECRegFan1RPMLow  = "0xB0"   // Fan1 RPM 低字节
+> ECRegFan1RPMHigh = "0xB1"   // Fan1 RPM 高字节
 > ECFanRelease     = "0xFF"   // 释放控制
 > ```
 
@@ -227,9 +227,11 @@ EC 固件
 > .\ec-probe.exe write 0x2C 0xFF     # 释放控制，交还固件
 > ```
 
-### 6. 转速反馈（`internal/sensors/gmwmi_rpm.go`）
+### 6. 转速反馈（`internal/ec/reader.go`）
 
-为了在 UI 上显示风扇**实际转速**（而非仅设定的百分比），程序通过 WMI 的 `RW_GMWMI` 接口（神舟等 Gaming WMI 笔记本）读取一段 `BufferBytes`，从固定偏移解析出小端 16 位 RPM 值（`BufferBytes[0x0C-0x0D]` = CPU 风扇，`[0x10-0x11]` = GPU 风扇）。不可用时优雅降级，UI 不显示 RPM。
+为了在 UI 上显示风扇**实际转速**（而非仅设定的百分比），程序复用同一条 `ec-probe.exe` + WinRing0 路径，读取 EC 寄存器 `0xB0/0xB1`（Fan1）与 `0xB2/0xB3`（Fan2），按小端 16 位组合成 RPM。读到 0 或读取失败时优雅降级，UI 不显示 RPM。
+
+> 这两对寄存器是真机 dump 交叉验证得到的：强制 Fan1 从 0% 拉到 100% 时 `0xB0/0xB1` 组合值从 0 跳到约 3800，空闲态约 5000 rpm，且与机器自带控制台读数一致。早期版本曾假设 RPM 在 `0xD0-0xD3`（错误，恒为常量 99）并试过 WMI `RW_GMWMI` 接口（被动 `SELECT *` 只能拿到全零的静态缓冲，该接口实为需要写命令字节才回填的读写通道），两条路径均已废弃。
 
 ### 7. Web UI 与配置（`internal/dashboard` · `internal/config`）
 
@@ -258,9 +260,9 @@ EC 固件
 - ⚠️ 部分机型寄存器只写不可回读，程序对此已兼容（不依赖回读判定成功）。
 
 **风扇转速反馈（RPM）**：
-- ✅ **神舟笔记本（已测试）**：通过 WMI `RW_GMWMI` 接口读取，CPU/GPU 双风扇转速完美显示。
-- ⚠️ 其他品牌可能使用不同接口，需要适配。
-- ℹ️ RPM 读取不可用时程序自动检测并优雅降级（UI 不显示 RPM），不影响调速功能。
+- ✅ **本项目目标机型已验证**：读 EC 寄存器 `0xB0`/`0xB1`（Fan1）、`0xB2`/`0xB3`（Fan2），小端 16 位。强制 0%→100% 时读数从 ~0 跳到 ~3800，空闲态 ~5000 rpm，与机器自带控制台一致。
+- ⚠️ RPM 寄存器地址同样因机型而异。换机型需重新用满速/停转 dump 对比法定位（见 [5.2](#52-本程序使用的寄存器地址)）。
+- ℹ️ RPM 读取不可用（读到 0 或驱动未加载）时程序自动优雅降级（UI 不显示 RPM），不影响调速功能。
 
 ## 🛠 从源码编译
 
@@ -268,7 +270,7 @@ EC 固件
 go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 ```
 
-- 无外部依赖，纯 Go 标准库 + 少量 WMI/系统调用封装。
+- 无外部依赖，纯 Go 标准库 + 少量系统调用封装。
 - `-H windowsgui` 让程序以 GUI 子系统启动（不弹控制台窗口）。
 - 编译后需把 `assets/` 目录放到 `ecc.exe` 同级。
 
@@ -285,7 +287,7 @@ internal/
   logging/              日志轮转
   paths/                运行时路径发现
   process/              Windows 隐藏窗口进程属性
-  sensors/              温度读取（PowerShell + LHM）+ RPM 反馈（WMI GMWMI）
+  sensors/              温度读取（PowerShell + LHM）
   startup/              开机自启动（任务计划程序）
   tray/                 系统托盘图标（Win32 Shell_NotifyIcon）
 ```
@@ -297,7 +299,7 @@ internal/
 | 风扇转速不变 | 驱动未加载或寄存器地址不对。管理员 PowerShell 跑 `ec-probe read 0x2C`；若报 `unable to load the winring0 driver` 则驱动问题，若读值不随写入变化则地址不匹配本机型。 |
 | 启动即退出 | 缺少管理员权限或 `assets/` 文件不全。查看日志 `%LOCALAPPDATA%\FanController\fan_controller.log`。 |
 | UI 显示温度为空 | LHM/PowerShell 桥接失败。日志会记录退避重启信息；确认 `LibreHardwareMonitorLib.dll` 存在。 |
-| UI 不显示 RPM | 本机型非 GMWMI 接口，属正常降级，不影响调速。 |
+| UI 不显示 RPM | 驱动未加载或本机型 RPM 寄存器地址不同（本项目为 `0xB0`–`0xB3`）。属优雅降级，不影响调速。 |
 | 托盘图标闪红 | EC 写入失败告警，通常是驱动未加载，见第一行。 |
 | 配置丢失/重置 | 配置文件曾损坏并被备份为 `config.json.corrupted.<时间戳>`，可在状态目录找回。 |
 

@@ -6,10 +6,14 @@ const (
 	AppName             = "FanController"
 	ECRegFan1           = "0x2C"
 	ECRegFan2           = "0x2D"
-	ECRegFan1RPMLow     = "0xD0"
-	ECRegFan1RPMHigh    = "0xD1"
-	ECRegFan2RPMLow     = "0xD2"
-	ECRegFan2RPMHigh    = "0xD3"
+	// Fan1/Fan2 实际转速寄存器（小端 16 位，低字节在前）。经真机 dump 交叉验证：
+	// 强制 Fan1 0%→100% 时 0xB0/0xB1 从 0 跳到 ~3800，空闲态 ~5000 rpm，且与
+	// 机器自带控制台读数一致。此前误用的 0xD0-0xD3 恒为常量 99、强制满速纹丝不动，
+	// 根本不是 RPM 寄存器——那条路径因当时接的 GMWMI reader 忽略入参而从未真正跑过。
+	ECRegFan1RPMLow     = "0xB0"
+	ECRegFan1RPMHigh    = "0xB1"
+	ECRegFan2RPMLow     = "0xB2"
+	ECRegFan2RPMHigh    = "0xB3"
 	ECFanRelease        = "0xFF"
 	SamplesPerCycle     = 6
 	SampleInterval      = time.Second
@@ -17,9 +21,9 @@ const (
 	LoopDriftTolerance  = 5 * time.Second
 	ExpectedCycleJitter = 1300 * time.Millisecond
 	HeartbeatInterval   = 30 * time.Second
-	// RPMReadInterval 限制 RPM 硬件查询频率。RPM 读取（GMWMI 走一次完整 WMI
-	// 查询，开销可达数十~数百毫秒）无需每次采样都做，节流到该间隔，两次之间
-	// 复用上次结果，避免每秒一次 WMI 查询带来的持续 CPU 开销。
+	// RPMReadInterval 限制 RPM 硬件查询频率。RPM 读取要各起一次 ec-probe.exe 进程
+	// （两个字节两次进程，每次都加载/卸载一次 WinRing0 驱动，开销可达数十~数百毫秒），
+	// 无需每次采样都做，节流到该间隔，两次之间复用上次结果，避免每秒一轮进程启动的持续开销。
 	RPMReadInterval   = 5 * time.Second
 	HistoryMaxSamples = 28800
 	CPUWeight         = 0.7

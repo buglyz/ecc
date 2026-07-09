@@ -31,9 +31,10 @@ type FanController struct {
 	cancel  context.CancelFunc
 	done    chan struct{}
 
-	// RPM 读取节流：GMWMI 每次 ReadRPM 都走一次完整 WMI 查询（几十~几百毫秒），
-	// 而采样循环每秒调用一次会带来可感知开销。这里把硬件查询降到 RPMReadInterval
-	// 一次，中间的采样复用上次读到的值。仅在控制循环 goroutine 内访问，无需加锁。
+	// RPM 读取节流：一次 ReadRPM 要为高低字节各启动一次 ec-probe.exe（每次都
+	// 加载/卸载 WinRing0 驱动，开销可达几十~上百毫秒），采样循环每秒调用一次会带来
+	// 可感知开销。这里把硬件查询降到 RPMReadInterval 一次，中间的采样复用上次读到
+	// 的值。仅在控制循环 goroutine 内访问，无需加锁。
 	lastRPM     *uint16
 	lastRPMTime time.Time
 }
@@ -175,9 +176,9 @@ func (c *FanController) setLatest(cpu, gpu, targetTemp *float64, speed int, rpm 
 }
 
 // readRPM 返回最近一次读到的风扇转速，并按 RPMReadInterval 节流硬件查询。
-// GMWMI 的一次 ReadRPM 会走完整 WMI 查询（开销可达数百毫秒），采样循环每秒
-// 调用不该每次都真查；节流窗口内直接复用上次结果。仅在控制循环 goroutine
-// 内调用，lastRPM/lastRPMTime 无并发访问。
+// 一次 ReadRPM 要 spawn 两次 ec-probe.exe（读低/高字节，各自加载卸载 WinRing0
+// 驱动），采样循环每秒调用不该每次都真查；节流窗口内直接复用上次结果。仅在
+// 控制循环 goroutine 内调用，lastRPM/lastRPMTime 无并发访问。
 func (c *FanController) readRPM() *uint16 {
 	if c.fanReader == nil {
 		return nil
