@@ -52,7 +52,7 @@
 
 ### 安装与使用
 
-1. 从 [Releases](https://github.com/buglyz/ecc/releases) 下载并解压，或右键 `install.ps1` 以管理员身份运行 PowerShell 一键安装。
+1. 从 [Releases](https://github.com/buglyz/ecc/releases) 下载并解压，右键 `install.ps1` 并以管理员身份运行 PowerShell；默认安装到 `%ProgramFiles%\ECC`。
 2. 双击 `ecc.exe` 启动，确认 UAC 提权提示。
 3. 系统托盘出现图标，浏览器自动打开控制台 `http://127.0.0.1:8765`。
 4. 在控制台中调整风扇曲线、切换预设、设置开机自启动。
@@ -64,7 +64,7 @@
 | 参数 | 默认 | 说明 |
 |------|------|------|
 | `--port` | `8765` | Web 控制台端口 |
-| `--interval` | `1000` | 采样间隔（毫秒） |
+| `--interval` | `1000` | 正整数采样间隔（毫秒） |
 | `--dry-run` | 关 | 仅记录 EC 写入，不操作硬件 |
 | `--simulate` | 关 | 使用模拟温度数据（同时启用 dry-run） |
 | `--skip-admin` | 关 | 跳过管理员权限检查 |
@@ -100,7 +100,7 @@
 
 程序**不直接读硬件传感器**，而是通过一个常驻的 PowerShell 子进程桥接 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)（LHM）：
 
-1. 首次读取时，把内嵌的 PowerShell 脚本写到状态目录并启动 `powershell.exe`，脚本内 `Add-Type` 加载 `LibreHardwareMonitorLib.dll`。
+1. 首次读取时，启动携带内嵌编码命令的 `powershell.exe`，并通过受控环境变量向脚本传入 `LibreHardwareMonitorLib.dll` 路径。
 2. 主程序通过 stdin 发送 `read\n`，PowerShell 侧读取所有 CPU/GPU 温度传感器，以 JSON 单行 (`{"cpu":63.5,"gpu":58.0}`) 从 stdout 返回。
 3. 主程序设 5 秒读取超时；超时或子进程崩溃即杀掉并重启。
 4. **指数退避**：连续失败时重启间隔按 1s→2s→4s…（上限 30s）递增，避免子进程反复崩溃时每秒白白 spawn 一个 `powershell.exe`。读到有效数据后计数清零。
@@ -135,7 +135,7 @@
 算出目标转速后**并不是每周期都写**，写入受多重条件门控，以减少无谓的 EC 操作与风扇转速抖动：
 
 - **滞回 (Hysteresis)**：若本周期平均温度与「上次已提交温度」相差 `< 2°C`（`HysteresisTemp`），视为温度已稳定，跳过写入。防止温度在临界点附近来回摆动导致风扇忽快忽慢。
-- **漂移 (Drift)**：若一个周期实际耗时偏离预期（6s + 抖动容差）超过 `LoopDriftTolerance`（系统卡顿、休眠唤醒等），强制写一次校正。
+- **漂移 (Drift)**：若一个周期实际耗时偏离预期（6 × 当前采样间隔 + 抖动容差）超过 `LoopDriftTolerance`（系统卡顿、休眠唤醒等），强制写一次校正。
 - **心跳 (Heartbeat)**：即使温度稳定，每 `30s`（`HeartbeatInterval`）也强制写一次，防止 EC 因固件看门狗把风扇控制权收回。
 - **配置变化**：用户在 Web UI 改了曲线/策略（配置版本号递增），立即强制写入，不等心跳，保证改动秒级生效。
 - **手动模式**：直接锁定用户指定的转速百分比，绕过曲线计算。
@@ -298,6 +298,7 @@ internal/
 |------|--------------|
 | 风扇转速不变 | 驱动未加载或寄存器地址不对。管理员 PowerShell 跑 `ec-probe read 0x2C`；若报 `unable to load the winring0 driver` 则驱动问题，若读值不随写入变化则地址不匹配本机型。 |
 | 启动即退出 | 缺少管理员权限或 `assets/` 文件不全。查看日志 `%LOCALAPPDATA%\FanController\fan_controller.log`。 |
+| 无法启用开机自启 | 程序未从 `%ProgramFiles%` 下的受保护安装目录运行。请重新运行管理员安装脚本。 |
 | UI 显示温度为空 | LHM/PowerShell 桥接失败。日志会记录退避重启信息；确认 `LibreHardwareMonitorLib.dll` 存在。 |
 | UI 不显示 RPM | 驱动未加载或本机型 RPM 寄存器地址不同（本项目为 `0xB0`–`0xB3`）。属优雅降级，不影响调速。 |
 | 托盘图标闪红 | EC 写入失败告警，通常是驱动未加载，见第一行。 |

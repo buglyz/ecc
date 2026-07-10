@@ -445,6 +445,9 @@ func normalizeCurve(raw []controller.Point) []controller.Point {
 	}
 	points := make([]controller.Point, 0, len(raw))
 	for _, point := range raw {
+		if math.IsNaN(point.Temp()) || math.IsInf(point.Temp(), 0) || math.IsNaN(point.Speed()) || math.IsInf(point.Speed(), 0) {
+			return cloneCurve(controller.DefaultCurve)
+		}
 		temp := math.Round(clamp(point.Temp(), controller.CurveTempMin, controller.CurveTempMax)*10) / 10
 		speed := math.Round(clamp(point.Speed(), controller.CurveSpeedMin, controller.CurveSpeedMax)*10) / 10
 		points = append(points, controller.Point{temp, speed})
@@ -569,4 +572,3 @@ func makeLegacyCurve(lowT, lowS, maxT, maxS int) []controller.Point {
 	}
 	return curve
 }
-

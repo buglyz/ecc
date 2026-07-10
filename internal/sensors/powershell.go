@@ -2,15 +2,18 @@ package sensors
 
 import (
 	"bufio"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 
 	"github.com/buglyz/ecc/internal/controller"
 	"github.com/buglyz/ecc/internal/process"
@@ -20,10 +23,10 @@ const readTimeout = 5 * time.Second
 const closeTimeout = 2 * time.Second
 const maxBackoff = 30 * time.Second
 const backoffMultiplier = 2
+const lhmDLLPathEnv = "ECC_LHM_DLL_PATH"
 
 type PowerShellReader struct {
 	DLLPath          string
-	StateDir         string
 	Logger           *log.Logger
 	mu               sync.Mutex
 	cmd              *exec.Cmd
@@ -133,14 +136,7 @@ func (r *PowerShellReader) Close() error {
 }
 
 func (r *PowerShellReader) startLocked() error {
-	if err := os.MkdirAll(r.StateDir, 0o755); err != nil {
-		return err
-	}
-	scriptPath := filepath.Join(r.StateDir, "lhm-reader.ps1")
-	if err := os.WriteFile(scriptPath, []byte(powerShellScript), 0o600); err != nil {
-		return err
-	}
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath, "-DllPath", r.DLLPath)
+	cmd := newPowerShellCommand(r.DLLPath)
 	cmd.SysProcAttr = process.HiddenSysProcAttr()
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
@@ -160,6 +156,40 @@ func (r *PowerShellReader) startLocked() error {
 	r.stdin = bufio.NewWriter(stdinPipe)
 	r.stdout = bufio.NewReader(stdoutPipe)
 	return nil
+}
+
+func newPowerShellCommand(dllPath string) *exec.Cmd {
+	cmd := exec.Command(
+		"powershell.exe",
+		"-NoProfile",
+		"-ExecutionPolicy",
+		"Bypass",
+		"-EncodedCommand",
+		encodePowerShellCommand(powerShellScript),
+	)
+	cmd.Env = append(withoutEnvironmentVariable(os.Environ(), lhmDLLPathEnv), lhmDLLPathEnv+"="+dllPath)
+	return cmd
+}
+
+func encodePowerShellCommand(script string) string {
+	encoded := utf16.Encode([]rune(script))
+	data := make([]byte, len(encoded)*2)
+	for i, value := range encoded {
+		binary.LittleEndian.PutUint16(data[i*2:], value)
+	}
+	return base64.StdEncoding.EncodeToString(data)
+}
+
+func withoutEnvironmentVariable(env []string, key string) []string {
+	out := make([]string, 0, len(env))
+	for _, entry := range env {
+		name, _, found := strings.Cut(entry, "=")
+		if found && strings.EqualFold(name, key) {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
 }
 
 func (r *PowerShellReader) resetLocked() {
@@ -228,8 +258,11 @@ func (r *PowerShellReader) recordFailureLocked() {
 	}
 }
 
-const powerShellScript = `param([string]$DllPath)
-$ErrorActionPreference = "Stop"
+const powerShellScript = `$ErrorActionPreference = "Stop"
+$DllPath = $env:ECC_LHM_DLL_PATH
+if ([string]::IsNullOrWhiteSpace($DllPath)) {
+  throw "missing LibreHardwareMonitor DLL path"
+}
 Add-Type -Path $DllPath
 $computer = [LibreHardwareMonitor.Hardware.Computer]::new()
 $computer.IsCpuEnabled = $true

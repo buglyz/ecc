@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,6 +54,25 @@ func TestSaveCreatesStateDir(t *testing.T) {
 	}
 	if _, err := os.Stat(cfgPath); err != nil {
 		t.Fatalf("config file not created: %v", err)
+	}
+}
+
+func TestSaveNormalizesNonFiniteCurveValues(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.json")
+	p := paths.Paths{StateDir: dir, ConfigPath: cfgPath, LegacyData: filepath.Join(dir, "data.dat")}
+	cfg := Default()
+	cfg.Curve[0][0] = math.NaN()
+
+	if err := Save(p, cfg); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if !json.Valid(data) {
+		t.Fatalf("saved config is not valid JSON: %s", data)
 	}
 }
 

@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/buglyz/ecc/internal/startup"
 )
 
 func TestHandleHealthReturnsOK(t *testing.T) {
@@ -103,6 +105,17 @@ func TestHandleStartupToggle(t *testing.T) {
 	}
 }
 
+func TestHandleStartupRejectsUnsafeTarget(t *testing.T) {
+	server, _ := newTestServer(t)
+	fake := server.startup.(*fakeStartupController)
+	fake.addErr = startup.ErrUnsafeStartupTarget
+
+	rec := postJSON(t, server.handleStartup, map[string]any{"enabled": true})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("enable status=%d, want 400", rec.Code)
+	}
+}
+
 func TestHandlePresetRejectsInvalidAction(t *testing.T) {
 	server, _ := newTestServer(t)
 	rec := postJSON(t, server.handlePreset, map[string]any{"action": "explode", "key": "balanced"})
@@ -130,19 +143,22 @@ func TestHandlePresetAddAcceptsEmptyLabel(t *testing.T) {
 
 func TestDecodeJSONLimitExceeded(t *testing.T) {
 	server, _ := newTestServer(t)
-	// Send a body larger than 64KB
-	bigBody := make([]byte, 65*1024)
-	for i := range bigBody {
-		bigBody[i] = 'a'
-	}
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(bigBody)))
+	bigBody := `{"theme":"` + strings.Repeat("a", maxRequestBody) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(bigBody))
 	rec := httptest.NewRecorder()
 	server.handleConfig(rec, req)
-	// Should fail to parse, not crash
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status=%d, want 413", rec.Code)
+	}
+}
+
+func TestHandleConfigRejectsTrailingJSON(t *testing.T) {
+	server, _ := newTestServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/config", strings.NewReader(`{"theme":"dark"} {"theme":"light"}`))
+	rec := httptest.NewRecorder()
+	server.handleConfig(rec, req)
 	if rec.Code != http.StatusBadRequest {
-		// It could also be 200 if the parser hit EOF before finding valid JSON
-		// The important thing is it doesn't panic or OOM
-		t.Logf("status=%d (acceptable, no panic)", rec.Code)
+		t.Fatalf("status=%d, want 400", rec.Code)
 	}
 }
 

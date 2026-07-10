@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 )
@@ -41,13 +42,24 @@ func (p *Point) UnmarshalJSON(data []byte) error {
 func numberFromJSON(data json.RawMessage) (float64, error) {
 	var number float64
 	if err := json.Unmarshal(data, &number); err == nil {
-		return number, nil
+		return finiteNumber(number)
 	}
 	var text string
 	if err := json.Unmarshal(data, &text); err != nil {
 		return 0, err
 	}
-	return strconv.ParseFloat(text, 64)
+	number, err := strconv.ParseFloat(text, 64)
+	if err != nil {
+		return 0, err
+	}
+	return finiteNumber(number)
+}
+
+func finiteNumber(number float64) (float64, error) {
+	if math.IsNaN(number) || math.IsInf(number, 0) {
+		return 0, fmt.Errorf("curve point values must be finite")
+	}
+	return number, nil
 }
 
 type Strategy struct {

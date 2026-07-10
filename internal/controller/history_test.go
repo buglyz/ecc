@@ -66,6 +66,22 @@ func TestSnapshotSinceCutoffInMiddle(t *testing.T) {
 	}
 }
 
+func TestSnapshotSinceAllocatesOnlyMatchingWindow(t *testing.T) {
+	h := NewHistory(10)
+	base := time.Now()
+	for i := 0; i < 6; i++ {
+		h.Add(HistorySample{Time: base.Add(time.Duration(i) * time.Minute), Speed: i})
+	}
+
+	got := h.SnapshotSince(base.Add(3 * time.Minute))
+	if len(got) != 3 {
+		t.Fatalf("len=%d, want 3", len(got))
+	}
+	if cap(got) != len(got) {
+		t.Fatalf("cap=%d, want %d matching samples", cap(got), len(got))
+	}
+}
+
 func TestSnapshotSinceCutoffBeforeAll(t *testing.T) {
 	h := NewHistory(10)
 	base := time.Now()

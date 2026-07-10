@@ -253,7 +253,7 @@ func (c *FanController) run() {
 			}
 		}
 
-		drifted := absDuration(time.Since(cycleStart)-ExpectedCycleDuration()) > LoopDriftTolerance
+		drifted := absDuration(time.Since(cycleStart)-ExpectedCycleDuration(c.pollInterval)) > LoopDriftTolerance
 		heartbeatDue := time.Since(lastWrite) >= HeartbeatInterval
 		state = c.currentMode()
 		var avgTemp *float64

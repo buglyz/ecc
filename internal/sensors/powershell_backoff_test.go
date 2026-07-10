@@ -8,9 +8,8 @@ import (
 
 func TestPowerShellReaderBackoff(t *testing.T) {
 	r := &PowerShellReader{
-		DLLPath:  "nonexistent.dll",
-		StateDir: t.TempDir(),
-		Logger:   log.Default(),
+		DLLPath: "nonexistent.dll",
+		Logger:  log.Default(),
 	}
 
 	// First 2 failures should not trigger backoff
@@ -43,9 +42,8 @@ func TestPowerShellReaderBackoff(t *testing.T) {
 
 func TestPowerShellReaderBackoffExponential(t *testing.T) {
 	r := &PowerShellReader{
-		DLLPath:  "nonexistent.dll",
-		StateDir: t.TempDir(),
-		Logger:   log.Default(),
+		DLLPath: "nonexistent.dll",
+		Logger:  log.Default(),
 	}
 
 	// Trigger multiple failures and check backoff increases
@@ -79,9 +77,8 @@ func TestPowerShellReaderBackoffExponential(t *testing.T) {
 
 func TestPowerShellReaderBackoffMax(t *testing.T) {
 	r := &PowerShellReader{
-		DLLPath:  "nonexistent.dll",
-		StateDir: t.TempDir(),
-		Logger:   log.Default(),
+		DLLPath: "nonexistent.dll",
+		Logger:  log.Default(),
 	}
 
 	// Trigger many failures to test max backoff
@@ -102,9 +99,8 @@ func TestPowerShellReaderBackoffMax(t *testing.T) {
 
 func TestPowerShellReaderBackoffReset(t *testing.T) {
 	r := &PowerShellReader{
-		DLLPath:  "nonexistent.dll",
-		StateDir: t.TempDir(),
-		Logger:   log.Default(),
+		DLLPath: "nonexistent.dll",
+		Logger:  log.Default(),
 	}
 
 	// Trigger failures

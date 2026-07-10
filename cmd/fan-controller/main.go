@@ -34,6 +34,12 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "do not auto-open browser")
 	flag.Parse()
 
+	pollInterval, err := pollIntervalFromMilliseconds(*interval)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid --interval: %v\n", err)
+		os.Exit(2)
+	}
+
 	admin.SetDPIAwareness()
 	runtimePaths := paths.Discover(controller.AppName)
 	logger, closeLog := logging.New(runtimePaths.LogPath)
@@ -72,7 +78,7 @@ func main() {
 		reader = sensors.NewSimulatedReader()
 		logger.Print("温度读取使用模拟模式")
 	} else {
-		reader = &sensors.PowerShellReader{DLLPath: runtimePaths.HardwareDLL, StateDir: runtimePaths.StateDir, Logger: logger}
+		reader = &sensors.PowerShellReader{DLLPath: runtimePaths.HardwareDLL, Logger: logger}
 	}
 	defer func() {
 		if err := reader.Close(); err != nil {
@@ -89,7 +95,6 @@ func main() {
 		fanReader = ec.Reader{ProbePath: runtimePaths.ECProbe, Logger: logger}
 		logger.Print("使用 EC 寄存器读取风扇 RPM")
 	}
-	pollInterval := time.Duration(*interval) * time.Millisecond
 	fan := controller.NewFanControllerWithRPM(reader, writer, fanReader, cfg.Curve, cfg.Strategy, pollInterval, logger)
 	fan.SetManual(cfg.ManualSpeedPtr())
 	fan.Start()
@@ -191,6 +196,17 @@ func requiredRuntimeFiles(runtimePaths paths.Paths, dryRun bool, simulate bool) 
 		missing = append(missing, "LibreHardwareMonitorLib.dll: "+runtimePaths.HardwareDLL)
 	}
 	return missing
+}
+
+func pollIntervalFromMilliseconds(milliseconds int) (time.Duration, error) {
+	const maxDuration = time.Duration(1<<63 - 1)
+	if milliseconds <= 0 {
+		return 0, fmt.Errorf("must be greater than zero milliseconds")
+	}
+	if int64(milliseconds) > int64(maxDuration/time.Millisecond) {
+		return 0, fmt.Errorf("is too large")
+	}
+	return time.Duration(milliseconds) * time.Millisecond, nil
 }
 
 func waitForExit() {

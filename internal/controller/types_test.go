@@ -27,6 +27,15 @@ func TestPointUnmarshalJSONStringNumbers(t *testing.T) {
 	}
 }
 
+func TestPointUnmarshalJSONRejectsNonFiniteValues(t *testing.T) {
+	for _, data := range []string{`["NaN", "40"]`, `["55", "Inf"]`, `["55", "-Inf"]`} {
+		var p Point
+		if err := json.Unmarshal([]byte(data), &p); err == nil {
+			t.Errorf("Unmarshal(%s) error=nil, want error", data)
+		}
+	}
+}
+
 func TestPointUnmarshalJSONRejectsWrongArity(t *testing.T) {
 	var p Point
 	if err := json.Unmarshal([]byte(`[40]`), &p); err == nil {

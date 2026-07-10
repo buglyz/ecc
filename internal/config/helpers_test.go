@@ -1,6 +1,7 @@
 package config
 
 import (
+	"math"
 	"strconv"
 	"testing"
 
@@ -306,6 +307,17 @@ func TestNormalizeCurveWrongLengthFallsBack(t *testing.T) {
 	for i, p := range controller.DefaultCurve {
 		if result[i] != p {
 			t.Errorf("point[%d]=%v, want default %v", i, result[i], p)
+		}
+	}
+}
+
+func TestNormalizeCurveNonFiniteValuesFallBack(t *testing.T) {
+	curve := cloneCurve(controller.DefaultCurve)
+	curve[2][0] = math.NaN()
+	result := normalizeCurve(curve)
+	for i, point := range controller.DefaultCurve {
+		if result[i] != point {
+			t.Errorf("point[%d]=%v, want default %v", i, result[i], point)
 		}
 	}
 }

@@ -198,8 +198,8 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req updateRequest
-	if err := decodeJSON(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeJSONDecodeError(w, err)
 		return
 	}
 	if req.Strategy != "" && !controller.ValidStrategy(req.Strategy) {
@@ -256,8 +256,8 @@ func (s *Server) handlePreset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req presetRequest
-	if err := decodeJSON(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeJSONDecodeError(w, err)
 		return
 	}
 	action := req.Action
@@ -323,8 +323,8 @@ func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req startupRequest
-	if err := decodeJSON(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeJSONDecodeError(w, err)
 		return
 	}
 	var err error
@@ -334,6 +334,10 @@ func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
 		err = s.startup.Remove(startup.Identifier)
 	}
 	if err != nil {
+		if errors.Is(err, startup.ErrUnsafeStartupTarget) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -376,8 +380,38 @@ func methodNotAllowed(w http.ResponseWriter) {
 
 const maxRequestBody = 64 * 1024
 
-func decodeJSON(r *http.Request, v any) error {
-	return json.NewDecoder(io.LimitReader(r.Body, maxRequestBody)).Decode(v)
+var errRequestBodyTooLarge = errors.New("request body exceeds 64 KiB")
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, v any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(v); err != nil {
+		return jsonDecodeError(err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return errors.New("request body must contain a single JSON value")
+		}
+		return jsonDecodeError(err)
+	}
+	return nil
+}
+
+func jsonDecodeError(err error) error {
+	var maxBytesError *http.MaxBytesError
+	if errors.As(err, &maxBytesError) {
+		return errRequestBodyTooLarge
+	}
+	return err
+}
+
+func writeJSONDecodeError(w http.ResponseWriter, err error) {
+	status := http.StatusBadRequest
+	if errors.Is(err, errRequestBodyTooLarge) {
+		status = http.StatusRequestEntityTooLarge
+	}
+	http.Error(w, err.Error(), status)
 }
 
 func clampInt(value, min, max int) int {

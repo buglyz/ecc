@@ -2,7 +2,7 @@
 # 用法：在 PowerShell 中以管理员身份运行此脚本
 
 param(
-    [string]$InstallPath = "$env:LOCALAPPDATA\ecc",
+    [string]$InstallPath = "",
     [switch]$KeepConfig = $false
 )
 
@@ -11,10 +11,24 @@ $ErrorActionPreference = "Stop"
 Write-Host "=== ECC Fan Controller 卸载程序 ===" -ForegroundColor Cyan
 Write-Host ""
 
+$programFilesRoot = [System.IO.Path]::GetFullPath([Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFiles)).TrimEnd([char[]]@('\', '/'))
+if ([string]::IsNullOrWhiteSpace($InstallPath)) {
+    $InstallPath = Join-Path $programFilesRoot "ECC"
+}
+$InstallPath = [System.IO.Path]::GetFullPath($InstallPath).TrimEnd([char[]]@('\', '/'))
+$programFilesPrefix = $programFilesRoot + [System.IO.Path]::DirectorySeparatorChar
+if (-not $InstallPath.StartsWith($programFilesPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    Write-Host "错误: 安装目录必须位于 $programFilesRoot 下。" -ForegroundColor Red
+    exit 1
+}
+$localAppDataRoot = [System.IO.Path]::GetFullPath([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData))
+$legacyInstallPath = [System.IO.Path]::GetFullPath((Join-Path $localAppDataRoot "ecc"))
+$configPath = [System.IO.Path]::GetFullPath((Join-Path $localAppDataRoot "FanController"))
+
 # 检查是否以管理员身份运行
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Host "警告: 未以管理员身份运行。删除开机自启任务计划可能需要管理员权限。" -ForegroundColor Yellow
+    Write-Host "警告: 未以管理员身份运行。删除 Program Files 安装目录和开机自启任务可能失败。" -ForegroundColor Yellow
     Write-Host ""
 }
 
@@ -30,11 +44,11 @@ if (-not (Test-Path $InstallPath)) {
 # 提示用户确认
 Write-Host "即将卸载 ECC Fan Controller，将执行以下操作：" -ForegroundColor Yellow
 Write-Host "  1. 停止正在运行的程序进程" -ForegroundColor White
-Write-Host "  2. 删除开机自启任务计划 (FanController)" -ForegroundColor White
-Write-Host "  3. 删除安装目录和程序文件" -ForegroundColor White
+Write-Host "  2. 删除开机自启任务计划 (风扇控制)" -ForegroundColor White
+Write-Host "  3. 删除 Program Files 安装目录和旧版用户目录安装" -ForegroundColor White
 Write-Host "  4. 删除桌面快捷方式" -ForegroundColor White
 if (-not $KeepConfig) {
-    Write-Host "  5. 删除配置文件和日志 ($env:APPDATA\ecc\)" -ForegroundColor White
+    Write-Host "  5. 删除配置文件和日志 ($configPath)" -ForegroundColor White
 } else {
     Write-Host "  5. 保留配置文件和日志 (使用了 -KeepConfig 参数)" -ForegroundColor Green
 }
@@ -66,7 +80,7 @@ if ($processes) {
 
 # 2. 删除开机自启任务计划
 Write-Host "[2/5] 删除开机自启任务计划..." -ForegroundColor Cyan
-$taskName = "FanController"
+$taskName = "风扇控制"
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($task) {
     try {
@@ -81,16 +95,22 @@ if ($task) {
 
 # 3. 删除安装目录
 Write-Host "[3/5] 删除安装目录..." -ForegroundColor Cyan
-if (Test-Path $InstallPath) {
-    try {
-        Remove-Item -Path $InstallPath -Recurse -Force -ErrorAction Stop
-        Write-Host "  已删除: $InstallPath" -ForegroundColor Green
-    } catch {
-        Write-Host "  警告: 删除安装目录失败: $_" -ForegroundColor Yellow
-        Write-Host "  请手动删除: $InstallPath" -ForegroundColor Yellow
+$installPaths = @($InstallPath)
+if (-not [string]::Equals($InstallPath, $legacyInstallPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $installPaths += $legacyInstallPath
+}
+foreach ($path in $installPaths) {
+    if (Test-Path -LiteralPath $path) {
+        try {
+            Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop
+            Write-Host "  已删除: $path" -ForegroundColor Green
+        } catch {
+            Write-Host "  警告: 删除安装目录失败: $_" -ForegroundColor Yellow
+            Write-Host "  请手动删除: $path" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  安装目录不存在，跳过: $path" -ForegroundColor Gray
     }
-} else {
-    Write-Host "  安装目录不存在，跳过" -ForegroundColor Gray
 }
 
 # 4. 删除桌面快捷方式
@@ -98,7 +118,7 @@ Write-Host "[4/5] 删除桌面快捷方式..." -ForegroundColor Cyan
 $desktopPath = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = Join-Path $desktopPath "ECC Fan Controller.lnk"
 if (Test-Path $shortcutPath) {
-    Remove-Item -Path $shortcutPath -Force
+    Remove-Item -LiteralPath $shortcutPath -Force
     Write-Host "  已删除: $shortcutPath" -ForegroundColor Green
 } else {
     Write-Host "  快捷方式不存在，跳过" -ForegroundColor Gray
@@ -106,13 +126,12 @@ if (Test-Path $shortcutPath) {
 
 # 5. 删除配置文件和日志
 Write-Host "[5/5] 处理配置文件和日志..." -ForegroundColor Cyan
-$configPath = "$env:APPDATA\ecc"
 if ($KeepConfig) {
     Write-Host "  保留配置文件: $configPath" -ForegroundColor Green
 } else {
     if (Test-Path $configPath) {
         try {
-            Remove-Item -Path $configPath -Recurse -Force -ErrorAction Stop
+            Remove-Item -LiteralPath $configPath -Recurse -Force -ErrorAction Stop
             Write-Host "  已删除: $configPath" -ForegroundColor Green
         } catch {
             Write-Host "  警告: 删除配置目录失败: $_" -ForegroundColor Yellow

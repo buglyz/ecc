@@ -46,18 +46,24 @@ func (h *History) Snapshot() []HistorySample {
 func (h *History) SnapshotSince(cutoff time.Time) []HistorySample {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	out := make([]HistorySample, 0, h.count)
-	for i := 0; i < h.count; i++ {
-		// idx 从最新样本向后回溯：head 指向下一个写入位，head-1 为最新。
-		idx := (h.head - 1 - i + h.max) % h.max
-		sample := h.buf[idx]
-		if sample.Time.Before(cutoff) {
-			break
+
+	count := h.count
+	if !cutoff.IsZero() {
+		count = 0
+		for i := 0; i < h.count; i++ {
+			// idx 从最新样本向后回溯：head 指向下一个写入位，head-1 为最新。
+			idx := (h.head - 1 - i + h.max) % h.max
+			if h.buf[idx].Time.Before(cutoff) {
+				break
+			}
+			count++
 		}
-		out = append(out, sample)
 	}
-	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-		out[i], out[j] = out[j], out[i]
+
+	out := make([]HistorySample, count)
+	start := (h.head - count + h.max) % h.max
+	for i := range out {
+		out[i] = h.buf[(start+i)%h.max]
 	}
 	return out
 }

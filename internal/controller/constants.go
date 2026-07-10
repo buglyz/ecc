@@ -3,9 +3,9 @@ package controller
 import "time"
 
 const (
-	AppName             = "FanController"
-	ECRegFan1           = "0x2C"
-	ECRegFan2           = "0x2D"
+	AppName   = "FanController"
+	ECRegFan1 = "0x2C"
+	ECRegFan2 = "0x2D"
 	// Fan1/Fan2 实际转速寄存器（小端 16 位，低字节在前）。经真机 dump 交叉验证：
 	// 强制 Fan1 0%→100% 时 0xB0/0xB1 从 0 跳到 ~3800，空闲态 ~5000 rpm，且与
 	// 机器自带控制台读数一致。此前误用的 0xD0-0xD3 恒为常量 99、强制满速纹丝不动，
@@ -50,6 +50,6 @@ var Presets = []Preset{
 	{Key: "performance", Label: "性能", Curve: []Point{{40, 40}, {55, 60}, {65, 80}, {75, 95}, {85, 100}}, Strategy: "max"},
 }
 
-func ExpectedCycleDuration() time.Duration {
-	return time.Duration(SamplesPerCycle)*SampleInterval + ExpectedCycleJitter
+func ExpectedCycleDuration(pollInterval time.Duration) time.Duration {
+	return time.Duration(SamplesPerCycle)*pollInterval + ExpectedCycleJitter
 }
