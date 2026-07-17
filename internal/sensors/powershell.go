@@ -244,16 +244,20 @@ func (r *PowerShellReader) clearLocked() {
 }
 
 func (r *PowerShellReader) recordFailureLocked() {
+	now := time.Now()
 	r.consecutiveFails++
-	r.lastFailTime = time.Now()
+	r.lastFailTime = now
 
 	if r.consecutiveFails >= 3 {
 		// Calculate exponential backoff: 1s, 2s, 4s, 8s, ..., max 30s
-		backoffDuration := time.Duration(1<<uint(r.consecutiveFails-3)) * time.Second
-		if backoffDuration > maxBackoff {
-			backoffDuration = maxBackoff
+		backoffDuration := time.Second
+		for failure := 3; failure < r.consecutiveFails && backoffDuration < maxBackoff; failure++ {
+			backoffDuration *= backoffMultiplier
+			if backoffDuration > maxBackoff {
+				backoffDuration = maxBackoff
+			}
 		}
-		r.backoffUntil = time.Now().Add(backoffDuration)
+		r.backoffUntil = now.Add(backoffDuration)
 		r.Logger.Printf("温度传感器连续失败 %d 次，退避 %v 后重试", r.consecutiveFails, backoffDuration)
 	}
 }

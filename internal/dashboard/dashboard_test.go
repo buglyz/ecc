@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -58,4 +59,17 @@ func TestConfigSnapshotConcurrentClone(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestEmbeddedDashboardIsSelfContainedAndReportsActionErrors(t *testing.T) {
+	for _, external := range []string{`src="http://`, `src="https://`, `href="http://`, `href="https://`} {
+		if strings.Contains(indexHTML, external) {
+			t.Fatalf("dashboard contains external asset reference %q", external)
+		}
+	}
+	for _, marker := range []string{`id="toast"`, "function actionError", "refreshing=false"} {
+		if !strings.Contains(indexHTML, marker) {
+			t.Errorf("dashboard missing %q", marker)
+		}
+	}
 }

@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -38,6 +41,17 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "invalid --interval: %v\n", err)
 		os.Exit(2)
+	}
+	if err := validateDashboardPort(*port); err != nil {
+		fmt.Fprintf(os.Stderr, "invalid --port: %v\n", err)
+		os.Exit(2)
+	}
+	requestedDashboardURL := "http://" + dashboard.BindAddress(*port)
+	if *port != 0 && dashboardAlreadyRunning(requestedDashboardURL) {
+		if !*noBrowser {
+			openBrowser(requestedDashboardURL)
+		}
+		return
 	}
 
 	admin.SetDPIAwareness()
@@ -97,8 +111,6 @@ func main() {
 	}
 	fan := controller.NewFanControllerWithRPM(reader, writer, fanReader, cfg.Curve, cfg.Strategy, pollInterval, logger)
 	fan.SetManual(cfg.ManualSpeedPtr())
-	fan.Start()
-	defer fan.Stop()
 
 	// 在 Start() 启动 HTTP goroutine 之前快照这些字段：server 持有 &cfg，
 	// handleConfig 会在请求中写回 *s.cfg，启动后再裸读 cfg 即构成数据竞争。
@@ -107,9 +119,21 @@ func main() {
 
 	server := dashboard.New(dashboard.BindAddress(*port), runtimePaths, &cfg, fan, logger)
 	if err := server.Start(); err != nil {
+		if *port != 0 && dashboardAlreadyRunning(requestedDashboardURL) {
+			logger.Printf("检测到已运行实例: %s", requestedDashboardURL)
+			if !*noBrowser {
+				openBrowser(requestedDashboardURL)
+			}
+			return
+		}
 		logger.Printf("Web 控制台启动失败: %v", err)
 		return
 	}
+
+	// 先成功占用控制台端口，再启动硬件控制循环。重复启动时第二个进程会在上方退出，
+	// 不会短暂并发写 EC，也不会在退出清理时释放第一个实例的风扇控制权。
+	fan.Start()
+	defer fan.Stop()
 
 	dashURL := server.URL()
 	logger.Printf("应用启动完成: url=%s strategy=%s manual_enabled=%t manual_speed=%d dry_run=%t simulate=%t",
@@ -207,6 +231,33 @@ func pollIntervalFromMilliseconds(milliseconds int) (time.Duration, error) {
 		return 0, fmt.Errorf("is too large")
 	}
 	return time.Duration(milliseconds) * time.Millisecond, nil
+}
+
+func validateDashboardPort(port int) error {
+	if port < 0 || port > 65535 {
+		return fmt.Errorf("must be between 0 and 65535")
+	}
+	return nil
+}
+
+func dashboardAlreadyRunning(baseURL string) bool {
+	client := http.Client{Timeout: 750 * time.Millisecond}
+	resp, err := client.Get(strings.TrimRight(baseURL, "/") + "/api/health")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	var health struct {
+		OK   bool      `json:"ok"`
+		Time time.Time `json:"time"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4*1024)).Decode(&health); err != nil {
+		return false
+	}
+	return health.OK && !health.Time.IsZero()
 }
 
 func waitForExit() {

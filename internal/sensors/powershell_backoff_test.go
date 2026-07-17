@@ -97,6 +97,16 @@ func TestPowerShellReaderBackoffMax(t *testing.T) {
 	}
 }
 
+func TestPowerShellReaderBackoffLargeFailureCountStaysCapped(t *testing.T) {
+	r := &PowerShellReader{Logger: log.Default(), consecutiveFails: 1000}
+
+	r.recordFailureLocked()
+
+	if backoff := r.backoffUntil.Sub(r.lastFailTime); backoff != maxBackoff {
+		t.Fatalf("backoff=%v, want %v", backoff, maxBackoff)
+	}
+}
+
 func TestPowerShellReaderBackoffReset(t *testing.T) {
 	r := &PowerShellReader{
 		DLLPath: "nonexistent.dll",
