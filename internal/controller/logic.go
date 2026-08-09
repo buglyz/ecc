@@ -1,15 +1,33 @@
 package controller
 
-import (
-	"math"
-	"sort"
-)
+import "math"
 
+// InterpolateCurve 在 temperature→speed 曲线上线性插值。
+//
+// 调用方保证（config.Normalize 的 normalizeCurve 恒定满足）：len 恒为 CurvePoints、
+// 温度严格递增。该不变量下走零分配快路径；非此形态的输入（如单元测试里的畸形
+// 曲线）退回复制+排序的防御路径，行为与旧实现逐位一致。
+// 需先验证不变量时用 curveSorted；快路径直接复用入参 slice，不做防御拷贝。
 func InterpolateCurve(curve []Point, temp float64) float64 {
-	points := append([]Point(nil), curve...)
-	sort.Slice(points, func(i, j int) bool { return points[i].Temp() < points[j].Temp() })
-	if len(points) == 0 {
+	if len(curve) == 0 {
 		return 0
+	}
+	points := curve
+	// 快路径：温度严格递增。归一化后的曲线必满足；不满足走防御路径。
+	// 严格递增隐含已排序，且别掉进 t2==t1 的退化分支。
+	if len(points) < 2 {
+		return points[0].Speed()
+	}
+	sorted := true
+	for i := 1; i < len(points); i++ {
+		if points[i].Temp() <= points[i-1].Temp() {
+			sorted = false
+			break
+		}
+	}
+	if !sorted {
+		points = append([]Point(nil), curve...)
+		sortAscending(points)
 	}
 	if temp <= points[0].Temp() {
 		return points[0].Speed()
@@ -28,6 +46,14 @@ func InterpolateCurve(curve []Point, temp float64) float64 {
 		}
 	}
 	return points[len(points)-1].Speed()
+}
+
+func sortAscending(points []Point) {
+	for i := 1; i < len(points); i++ {
+		for j := i; j > 0 && points[j].Temp() < points[j-1].Temp(); j-- {
+			points[j], points[j-1] = points[j-1], points[j]
+		}
+	}
 }
 
 func CombineTemps(strategy string, cpu, gpu *float64) *float64 {

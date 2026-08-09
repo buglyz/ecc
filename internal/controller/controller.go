@@ -167,12 +167,16 @@ func (c *FanController) currentMode() modeState {
 	return state
 }
 
+// setLatest 同时更新 Latest 与 HistorySample。Latest 和 HistorySample 需要各自的
+// 指针字段（JSON 编码时互不影响），但 CPU/GPU/TargetTemp 的浮点值本次采样内共享
+// 同一份拷贝，避免逐样本 3 次重复分配。
 func (c *FanController) setLatest(cpu, gpu, targetTemp *float64, speed int, rpm *uint16, mode string, lastECWrite time.Time) {
 	now := time.Now()
+	cpuCopy, gpuCopy, targetCopy := copyFloat(cpu), copyFloat(gpu), copyFloat(targetTemp)
 	c.mu.Lock()
-	c.latest = Latest{CPU: copyFloat(cpu), GPU: copyFloat(gpu), TargetTemp: copyFloat(targetTemp), Speed: &speed, ActualRPM: rpm, Mode: mode, UpdatedAt: now, LastECWrite: lastECWrite}
+	c.latest = Latest{CPU: cpuCopy, GPU: gpuCopy, TargetTemp: targetCopy, Speed: &speed, ActualRPM: rpm, Mode: mode, UpdatedAt: now, LastECWrite: lastECWrite}
 	c.mu.Unlock()
-	c.history.Add(HistorySample{Time: now, CPU: copyFloat(cpu), GPU: copyFloat(gpu), TargetTemp: copyFloat(targetTemp), Speed: speed, ActualRPM: rpm})
+	c.history.Add(HistorySample{Time: now, CPU: cpuCopy, GPU: gpuCopy, TargetTemp: targetCopy, Speed: speed, ActualRPM: rpm})
 }
 
 // readRPM 返回最近一次读到的风扇转速，并按 RPMReadInterval 节流硬件查询。
@@ -224,6 +228,11 @@ func (c *FanController) run() {
 
 	for {
 		cycleTemps := make([]float64, 0, SamplesPerCycle)
+		// 采样循环内复用周期首快照：currentMode 会深拷曲线，逐样本取太贵。
+		// 写决策在周期末另行取最新快照，故手动/策略/曲线变化最迟在本周期末生效，
+		// 且 SetCurve 等通过 kick() 触发 nudge 提前结束本周期并立即进入写决策。
+		state = c.currentMode()
+		mode = modeName(state)
 		for i := 0; i < SamplesPerCycle; i++ {
 			select {
 			case <-c.ctx.Done():
@@ -231,12 +240,10 @@ func (c *FanController) run() {
 			default:
 			}
 			temps := c.reader.Read()
-			state = c.currentMode()
 			targetTemp := CombineTemps(state.strategy, temps.CPU, temps.GPU)
 			if targetTemp != nil {
 				cycleTemps = append(cycleTemps, *targetTemp)
 			}
-			mode = modeName(state)
 			rpm := c.readRPM()
 			c.setLatest(temps.CPU, temps.GPU, targetTemp, currentSpeed, rpm, mode, lastWrite)
 
@@ -244,8 +251,10 @@ func (c *FanController) run() {
 			select {
 			case <-sampleTimer.C:
 			case <-c.nudge:
-				if !sampleTimer.Stop() {
-					<-sampleTimer.C
+				sampleTimer.Stop()
+				select {
+				case <-sampleTimer.C:
+				default:
 				}
 				i = SamplesPerCycle
 			case <-c.ctx.Done():
@@ -274,6 +283,7 @@ func (c *FanController) run() {
 			target = ClampSpeed(InterpolateCurve(state.curve, avg))
 			mode = "auto:" + state.strategy
 		} else {
+			// 无任何温度采样：周期内无意义，不进入写决策，直接开始下一周期。
 			cycleStart = time.Now()
 			continue
 		}

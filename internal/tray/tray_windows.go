@@ -4,7 +4,6 @@ package tray
 
 import (
 	"fmt"
-	"math"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -146,6 +145,12 @@ type Tray struct {
 	mu          sync.Mutex
 	running     bool
 	stopCh      chan struct{}
+
+	// 已渲染图标的内容与 tooltip。Update 发现显示值没变时跳过 GDI 重建与
+	// nimModify；Alert 置红后清空，强制下一次 Update 重建恢复正常图标。
+	lastSpec      *iconSpec
+	lastTooltip   string
+	iconDirty     bool
 }
 
 var instance *Tray
@@ -232,18 +237,33 @@ func (t *Tray) Update(temp *float64, speed *int) {
 	if temp != nil && speed != nil {
 		tooltip = fmt.Sprintf("风扇控制器: %.0f°C / %d%%", *temp, *speed)
 	}
-	for i := range t.nid.szTip {
-		t.nid.szTip[i] = 0
-	}
-	copy(t.nid.szTip[:], utf16(tooltip))
 
-	newIcon := createTempIcon(temp)
-	if newIcon != 0 {
-		oldIcon := t.nid.hIcon
-		t.nid.hIcon = newIcon
-		if oldIcon != 0 && oldIcon != t.defaultIcon {
-			pDestroyIcon.Call(uintptr(oldIcon))
+	spec := iconForTemp(temp)
+	needIcon := t.iconDirty || t.lastSpec == nil || *t.lastSpec != spec
+	needTip := tooltip != t.lastTooltip
+	if !needIcon && !needTip {
+		// 显示值无变化：跳过 GDI 重建与 nimModify，避免每秒一次 DIB/icon 抖动。
+		return
+	}
+
+	if needIcon {
+		if newIcon := createTempIcon(temp); newIcon != 0 {
+			oldIcon := t.nid.hIcon
+			t.nid.hIcon = newIcon
+			if oldIcon != 0 && oldIcon != t.defaultIcon {
+				pDestroyIcon.Call(uintptr(oldIcon))
+			}
 		}
+		t.iconDirty = false
+		t.lastSpec = &spec
+	}
+
+	if needTip {
+		for i := range t.nid.szTip {
+			t.nid.szTip[i] = 0
+		}
+		copy(t.nid.szTip[:], utf16(tooltip))
+		t.lastTooltip = tooltip
 	}
 
 	t.nid.uFlags = nifMessage | nifIcon | nifTip
@@ -269,6 +289,9 @@ func (t *Tray) Alert() {
 		if oldIcon != 0 && oldIcon != t.defaultIcon && oldIcon != redIcon {
 			pDestroyIcon.Call(uintptr(oldIcon))
 		}
+		// 置红打破缓存：下一次 Update 必须重建图标以恢复正常显示。
+		t.iconDirty = true
+		t.lastSpec = nil
 	}
 }
 
@@ -337,134 +360,6 @@ func showContextMenu(hwnd syscall.Handle) {
 	pGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
 	pTrackPopupMenu.Call(menu, tpmLeftAlign, uintptr(pt.x), uintptr(pt.y), 0, uintptr(hwnd), 0)
 	pDestroyMenu.Call(menu)
-}
-
-func createTempIcon(temp *float64) syscall.Handle {
-	const size = 16
-	text := "--"
-	var r, g, b uint8 = 200, 200, 200
-	if temp != nil {
-		t := *temp
-		text = fmt.Sprintf("%d", int(math.Round(t)))
-		switch {
-		case t < 60:
-			r, g, b = 80, 220, 100
-		case t < 80:
-			r, g, b = 255, 200, 50
-		default:
-			r, g, b = 255, 90, 90
-		}
-	}
-
-	pixels := renderText16(text, r, g, b)
-
-	bi := bitmapInfo{
-		bmiHeader: bitmapInfoHeader{
-			biSize:     uint32(unsafe.Sizeof(bitmapInfoHeader{})),
-			biWidth:    int32(size),
-			biHeight:   -int32(size),
-			biPlanes:   1,
-			biBitCount: 32,
-		},
-	}
-
-	var bits unsafe.Pointer
-	hBitmap, _, _ := pCreateDIBSection.Call(0, uintptr(unsafe.Pointer(&bi)), 0, uintptr(unsafe.Pointer(&bits)), 0, 0)
-	if hBitmap == 0 || bits == nil {
-		if hBitmap != 0 {
-			pDeleteObject.Call(hBitmap)
-		}
-		return 0
-	}
-	dst := unsafe.Slice((*byte)(bits), size*size*4)
-	copy(dst, pixels)
-
-	var maskPtr unsafe.Pointer
-	hMask, _, _ := pCreateDIBSection.Call(0, uintptr(unsafe.Pointer(&bi)), 0, uintptr(unsafe.Pointer(&maskPtr)), 0, 0)
-	if hMask == 0 || maskPtr == nil {
-		if hMask != 0 {
-			pDeleteObject.Call(hMask)
-		}
-		pDeleteObject.Call(hBitmap)
-		return 0
-	}
-	maskDst := unsafe.Slice((*byte)(maskPtr), size*size*4)
-	for i := range maskDst {
-		maskDst[i] = 0
-	}
-
-	ii := iconInfo{
-		fIcon:    1,
-		hbmMask:  syscall.Handle(hMask),
-		hbmColor: syscall.Handle(hBitmap),
-	}
-	icon, _, _ := pCreateIconIndirect.Call(uintptr(unsafe.Pointer(&ii)))
-
-	pDeleteObject.Call(hBitmap)
-	pDeleteObject.Call(hMask)
-
-	return syscall.Handle(icon)
-}
-
-func createColorIcon(r, g, b uint8) syscall.Handle {
-	const size = 16
-	pixels := make([]byte, size*size*4)
-
-	// Fill entire icon with solid color
-	for i := 0; i < size*size; i++ {
-		idx := i * 4
-		pixels[idx+0] = b   // Blue
-		pixels[idx+1] = g   // Green
-		pixels[idx+2] = r   // Red
-		pixels[idx+3] = 255 // Alpha
-	}
-
-	bi := bitmapInfo{
-		bmiHeader: bitmapInfoHeader{
-			biSize:     uint32(unsafe.Sizeof(bitmapInfoHeader{})),
-			biWidth:    int32(size),
-			biHeight:   -int32(size),
-			biPlanes:   1,
-			biBitCount: 32,
-		},
-	}
-
-	var bits unsafe.Pointer
-	hBitmap, _, _ := pCreateDIBSection.Call(0, uintptr(unsafe.Pointer(&bi)), 0, uintptr(unsafe.Pointer(&bits)), 0, 0)
-	if hBitmap == 0 || bits == nil {
-		if hBitmap != 0 {
-			pDeleteObject.Call(hBitmap)
-		}
-		return 0
-	}
-	dst := unsafe.Slice((*byte)(bits), size*size*4)
-	copy(dst, pixels)
-
-	var maskPtr unsafe.Pointer
-	hMask, _, _ := pCreateDIBSection.Call(0, uintptr(unsafe.Pointer(&bi)), 0, uintptr(unsafe.Pointer(&maskPtr)), 0, 0)
-	if hMask == 0 || maskPtr == nil {
-		if hMask != 0 {
-			pDeleteObject.Call(hMask)
-		}
-		pDeleteObject.Call(hBitmap)
-		return 0
-	}
-	maskDst := unsafe.Slice((*byte)(maskPtr), size*size*4)
-	for i := range maskDst {
-		maskDst[i] = 0
-	}
-
-	ii := iconInfo{
-		fIcon:    1,
-		hbmMask:  syscall.Handle(hMask),
-		hbmColor: syscall.Handle(hBitmap),
-	}
-	icon, _, _ := pCreateIconIndirect.Call(uintptr(unsafe.Pointer(&ii)))
-
-	pDeleteObject.Call(hBitmap)
-	pDeleteObject.Call(hMask)
-
-	return syscall.Handle(icon)
 }
 
 func utf16(s string) []uint16 {

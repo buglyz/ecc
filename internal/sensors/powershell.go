@@ -35,7 +35,6 @@ type PowerShellReader struct {
 	stdinPipe        anyWriteCloser
 	stdoutPipe       io.Closer
 	consecutiveFails int
-	lastFailTime     time.Time
 	backoffUntil     time.Time
 }
 
@@ -243,23 +242,26 @@ func (r *PowerShellReader) clearLocked() {
 	r.stdoutPipe = nil
 }
 
-func (r *PowerShellReader) recordFailureLocked() {
+// recordFailureLocked 记一次失败并计算退避时长。返回本次实际设置的退避
+// （连续失败 <3 次时返回 0），供测试断言，避免为观测引入只写不读的字段。
+func (r *PowerShellReader) recordFailureLocked() time.Duration {
 	now := time.Now()
 	r.consecutiveFails++
-	r.lastFailTime = now
+	backoff := time.Duration(0)
 
 	if r.consecutiveFails >= 3 {
 		// Calculate exponential backoff: 1s, 2s, 4s, 8s, ..., max 30s
-		backoffDuration := time.Second
-		for failure := 3; failure < r.consecutiveFails && backoffDuration < maxBackoff; failure++ {
-			backoffDuration *= backoffMultiplier
-			if backoffDuration > maxBackoff {
-				backoffDuration = maxBackoff
+		backoff = time.Second
+		for failure := 3; failure < r.consecutiveFails && backoff < maxBackoff; failure++ {
+			backoff *= backoffMultiplier
+			if backoff > maxBackoff {
+				backoff = maxBackoff
 			}
 		}
-		r.backoffUntil = now.Add(backoffDuration)
-		r.Logger.Printf("温度传感器连续失败 %d 次，退避 %v 后重试", r.consecutiveFails, backoffDuration)
+		r.backoffUntil = now.Add(backoff)
+		r.Logger.Printf("温度传感器连续失败 %d 次，退避 %v 后重试", r.consecutiveFails, backoff)
 	}
+	return backoff
 }
 
 const powerShellScript = `$ErrorActionPreference = "Stop"

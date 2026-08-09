@@ -46,7 +46,7 @@ func TestPowerShellReaderBackoffExponential(t *testing.T) {
 		Logger:  log.Default(),
 	}
 
-	// Trigger multiple failures and check backoff increases
+	// Trigger failures and check backoff increases
 	expectedBackoffs := []time.Duration{
 		0,                // fail 1
 		0,                // fail 2
@@ -59,11 +59,7 @@ func TestPowerShellReaderBackoffExponential(t *testing.T) {
 
 	for i, expected := range expectedBackoffs {
 		r.mu.Lock()
-		r.recordFailureLocked()
-		var actual time.Duration
-		if !r.backoffUntil.IsZero() {
-			actual = r.backoffUntil.Sub(r.lastFailTime)
-		}
+		actual := r.recordFailureLocked()
 		r.mu.Unlock()
 
 		// Allow 10ms tolerance for timing
@@ -82,15 +78,12 @@ func TestPowerShellReaderBackoffMax(t *testing.T) {
 	}
 
 	// Trigger many failures to test max backoff
+	var backoff time.Duration
 	for i := 0; i < 10; i++ {
 		r.mu.Lock()
-		r.recordFailureLocked()
+		backoff = r.recordFailureLocked()
 		r.mu.Unlock()
 	}
-
-	r.mu.Lock()
-	backoff := r.backoffUntil.Sub(r.lastFailTime)
-	r.mu.Unlock()
 
 	if backoff > maxBackoff {
 		t.Errorf("backoff %v exceeds max %v", backoff, maxBackoff)
@@ -98,11 +91,9 @@ func TestPowerShellReaderBackoffMax(t *testing.T) {
 }
 
 func TestPowerShellReaderBackoffLargeFailureCountStaysCapped(t *testing.T) {
-	r := &PowerShellReader{Logger: log.Default(), consecutiveFails: 1000}
+	r := &PowerShellReader{Logger: log.Default(), consecutiveFails: 999}
 
-	r.recordFailureLocked()
-
-	if backoff := r.backoffUntil.Sub(r.lastFailTime); backoff != maxBackoff {
+	if backoff := r.recordFailureLocked(); backoff != maxBackoff {
 		t.Fatalf("backoff=%v, want %v", backoff, maxBackoff)
 	}
 }

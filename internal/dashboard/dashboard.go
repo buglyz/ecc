@@ -3,16 +3,13 @@ package dashboard
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -59,37 +56,6 @@ func (systemStartupController) Add(targetPath, identifier string) error {
 
 func (systemStartupController) Remove(identifier string) error {
 	return startup.Remove(identifier)
-}
-
-type stateResponse struct {
-	Config       config.Config              `json:"config"`
-	Latest       controller.Latest          `json:"latest"`
-	History      []controller.HistorySample `json:"history"`
-	Strategies   []controller.Strategy      `json:"strategies"`
-	Presets      []controller.Preset        `json:"presets"`
-	Startup      bool                       `json:"startup"`
-	RuntimePaths paths.Paths                `json:"runtime_paths"`
-}
-
-type updateRequest struct {
-	Curve         []controller.Point `json:"curve"`
-	Strategy      string             `json:"strategy"`
-	ManualEnabled *bool              `json:"manual_enabled"`
-	ManualSpeed   *int               `json:"manual_speed"`
-	Theme         string             `json:"theme"`
-	TimeEntry     string             `json:"time_entry"`
-}
-
-type presetRequest struct {
-	// Action：apply（切换，默认）/ save（写回当前曲线）/ add（新建自定义挡位）/
-	// restore（内置挡位恢复出厂）/ delete（删除自定义挡位）。
-	Action string `json:"action"`
-	Key    string `json:"key"`
-	Label  string `json:"label"`
-}
-
-type startupRequest struct {
-	Enabled bool `json:"enabled"`
 }
 
 func New(addr string, p paths.Paths, cfg *config.Config, fan *controller.FanController, logger *log.Logger) *Server {
@@ -155,205 +121,6 @@ func rejectCrossOrigin(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := indexTemplate.Execute(w, nil); err != nil {
-		s.logger.Printf("首页模板渲染失败: %v", err)
-	}
-}
-
-func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		methodNotAllowed(w)
-		return
-	}
-	var history []controller.HistorySample
-	if minutes := r.URL.Query().Get("minutes"); minutes != "" {
-		if m, err := strconv.Atoi(minutes); err == nil && m > 0 {
-			cutoff := time.Now().Add(-time.Duration(m) * time.Minute)
-			history = s.controller.SnapshotSince(cutoff)
-		}
-	}
-	if history == nil {
-		history = s.controller.Snapshot()
-	}
-	s.writeJSON(w, stateResponse{
-		Config:       s.configSnapshot(),
-		Latest:       s.controller.Latest(),
-		History:      history,
-		Strategies:   controller.Strategies,
-		Presets:      controller.Presets,
-		Startup:      s.startupCached.Load(),
-		RuntimePaths: s.paths,
-	})
-}
-
-func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		methodNotAllowed(w)
-		return
-	}
-	var req updateRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeJSONDecodeError(w, err)
-		return
-	}
-	if req.Strategy != "" && !controller.ValidStrategy(req.Strategy) {
-		http.Error(w, "invalid strategy", http.StatusBadRequest)
-		return
-	}
-
-	s.cfgMu.Lock()
-	cfg := s.cfg.Clone()
-	if len(req.Curve) > 0 {
-		cfg.Curve = req.Curve
-	}
-	if req.Strategy != "" {
-		cfg.Strategy = req.Strategy
-	}
-	if req.ManualSpeed != nil {
-		cfg.ManualSpeed = clampInt(*req.ManualSpeed, 0, 100)
-	}
-	if req.ManualEnabled != nil {
-		cfg.ManualEnabled = *req.ManualEnabled
-	}
-	if req.Theme == "light" || req.Theme == "dark" {
-		cfg.Theme = req.Theme
-	}
-	if req.TimeEntry != "" {
-		minutes, err := strconv.Atoi(req.TimeEntry)
-		if err == nil {
-			cfg.TimeEntry = strconv.Itoa(clampInt(minutes, 1, 480))
-		}
-	}
-	// 显式保存模型：编辑只更新工作状态（curve/strategy），不自动写回激活挡位槽。
-	// 否则槽永远等于工作状态，「已修改」标记和「保存」按钮便失去意义。
-	// 挡位槽仅由 /api/preset 的 save/add/restore 动作变更。
-	cfg = config.Normalize(cfg)
-	saveErr := config.Save(s.paths, cfg)
-	if saveErr == nil {
-		*s.cfg = cfg.Clone()
-		// 在锁内应用到控制器，确保「存盘顺序」与「应用顺序」一致：
-		// 否则并发 POST 可能磁盘存 B、控制器却被 A 覆盖，永久不一致。
-		s.applyControllerConfig(cfg)
-	}
-	s.cfgMu.Unlock()
-	if saveErr != nil {
-		http.Error(w, saveErr.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	s.writeJSON(w, map[string]any{"ok": true, "config": cfg})
-}
-
-func (s *Server) handlePreset(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		methodNotAllowed(w)
-		return
-	}
-	var req presetRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeJSONDecodeError(w, err)
-		return
-	}
-	action := req.Action
-	if action == "" {
-		action = "apply"
-	}
-
-	s.cfgMu.Lock()
-	cfg := s.cfg.Clone()
-	// 显式保存模型：apply 不再自动把编辑写回旧槽，否则「已修改」标记与「保存」按钮便失去意义。
-	// 工作状态（curve/strategy）由 /api/config 持久化；预设槽是命名快照，仅在 save/add/restore 时变更。
-	var ok bool
-	switch action {
-	case "apply":
-		ok = config.ApplyPreset(&cfg, req.Key)
-	case "save":
-		ok = config.SavePreset(&cfg, req.Key)
-	case "add":
-		ok = config.AddPreset(&cfg, newPresetKey(cfg), req.Label)
-	case "restore":
-		ok = config.RestorePreset(&cfg, req.Key)
-	case "delete":
-		ok = config.DeletePreset(&cfg, req.Key)
-	default:
-		s.cfgMu.Unlock()
-		http.Error(w, "unknown preset action", http.StatusBadRequest)
-		return
-	}
-	if !ok {
-		s.cfgMu.Unlock()
-		http.Error(w, "preset action rejected", http.StatusBadRequest)
-		return
-	}
-
-	cfg = config.Normalize(cfg)
-	saveErr := config.Save(s.paths, cfg)
-	if saveErr == nil {
-		*s.cfg = cfg.Clone()
-		s.applyControllerConfig(cfg)
-	}
-	s.cfgMu.Unlock()
-	if saveErr != nil {
-		http.Error(w, saveErr.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	s.writeJSON(w, map[string]any{"ok": true, "config": cfg})
-}
-
-// newPresetKey 生成一个当前配置中未占用的自定义挡位 key（custom1、custom2…）。
-func newPresetKey(cfg config.Config) string {
-	for i := 1; ; i++ {
-		key := "custom" + strconv.Itoa(i)
-		if _, exists := cfg.Presets[key]; !exists {
-			return key
-		}
-	}
-}
-
-func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		methodNotAllowed(w)
-		return
-	}
-	var req startupRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeJSONDecodeError(w, err)
-		return
-	}
-	var err error
-	if req.Enabled {
-		err = s.startup.Add(s.paths.StartupTarget, startup.Identifier)
-	} else {
-		err = s.startup.Remove(startup.Identifier)
-	}
-	if err != nil {
-		if errors.Is(err, startup.ErrUnsafeStartupTarget) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	enabled := s.startup.IsEnabled(startup.Identifier)
-	s.startupCached.Store(enabled)
-	s.writeJSON(w, map[string]any{"ok": true, "startup": enabled})
-}
-
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		methodNotAllowed(w)
-		return
-	}
-	s.writeJSON(w, map[string]any{"ok": true, "time": time.Now()})
-}
-
 func (s *Server) configSnapshot() config.Config {
 	s.cfgMu.RLock()
 	defer s.cfgMu.RUnlock()
@@ -366,62 +133,18 @@ func (s *Server) applyControllerConfig(cfg config.Config) {
 	s.controller.SetManual(cfg.ManualSpeedPtr())
 }
 
-func (s *Server) writeJSON(w http.ResponseWriter, value any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	encoder := json.NewEncoder(w)
-	if err := encoder.Encode(value); err != nil {
-		s.logger.Printf("响应 JSON 编码失败: %v", err)
+// saveAndApplyLocked 把配置原子地「存盘 + 写入内存 + 应用到控制器」，并返回
+// 归一化后的配置（响应回显用）。必须在持有 s.cfgMu 时调用。成功后先更新
+// *s.cfg 再应用控制器，保证「存盘顺序」与「应用顺序」一致：并发 POST 不会出现
+// 磁盘存 B、控制器却被 A 覆盖的永久不一致。返回错误时 *s.cfg 与控制器保持原样。
+func (s *Server) saveAndApplyLocked(cfg config.Config) (config.Config, error) {
+	cfg = config.Normalize(cfg)
+	if saveErr := config.Save(s.paths, cfg); saveErr != nil {
+		return cfg, saveErr
 	}
-}
-
-func methodNotAllowed(w http.ResponseWriter) {
-	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-}
-
-const maxRequestBody = 64 * 1024
-
-var errRequestBodyTooLarge = errors.New("request body exceeds 64 KiB")
-
-func decodeJSON(w http.ResponseWriter, r *http.Request, v any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(v); err != nil {
-		return jsonDecodeError(err)
-	}
-	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
-		if err == nil {
-			return errors.New("request body must contain a single JSON value")
-		}
-		return jsonDecodeError(err)
-	}
-	return nil
-}
-
-func jsonDecodeError(err error) error {
-	var maxBytesError *http.MaxBytesError
-	if errors.As(err, &maxBytesError) {
-		return errRequestBodyTooLarge
-	}
-	return err
-}
-
-func writeJSONDecodeError(w http.ResponseWriter, err error) {
-	status := http.StatusBadRequest
-	if errors.Is(err, errRequestBodyTooLarge) {
-		status = http.StatusRequestEntityTooLarge
-	}
-	http.Error(w, err.Error(), status)
-}
-
-func clampInt(value, min, max int) int {
-	if value < min {
-		return min
-	}
-	if value > max {
-		return max
-	}
-	return value
+	*s.cfg = cfg.Clone()
+	s.applyControllerConfig(cfg)
+	return cfg, nil
 }
 
 var indexTemplate = template.Must(template.New("index").Parse(indexHTML))
