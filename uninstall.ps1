@@ -1,5 +1,6 @@
-# ECC Fan Controller - 卸载脚本
-# 用法：在 PowerShell 中以管理员身份运行此脚本
+﻿# ECC Fan Controller - 卸载脚本
+# 用法：直接右键"用 PowerShell 运行"即可，脚本会自动请求管理员权限。
+#       或在管理员 PowerShell 中执行：.\uninstall.ps1 [-KeepConfig]
 
 param(
     [string]$InstallPath = "",
@@ -8,6 +9,42 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# 判断当前是否由资源管理器右键启动（这种窗口在脚本结束时会立即关闭）。
+$runFromExplorer = $false
+try {
+    $parentId = (Get-CimInstance Win32_Process -Filter "ProcessId=$PID").ParentProcessId
+    $parentName = (Get-CimInstance Win32_Process -Filter "ProcessId=$parentId" -ErrorAction SilentlyContinue).Name
+    if ($parentName -match "explorer") { $runFromExplorer = $true }
+} catch { }
+
+# 判断当前是否已是管理员。
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+# 非管理员：右键启动时自动提权重启；终端启动时给出明确提示后退出。
+if (-not $isAdmin) {
+    if ($runFromExplorer) {
+        $scriptPath = $MyInvocation.MyCommand.Definition
+        $argList = "-NoExit -ExecutionPolicy Bypass -File `"$scriptPath`""
+        if ($InstallPath) { $argList += " -InstallPath `"$InstallPath`"" }
+        if ($KeepConfig) { $argList += " -KeepConfig" }
+        try {
+            Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $argList
+        } catch {
+            Write-Host "错误: 用户拒绝了管理员权限请求，无法继续卸载。" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "按回车键关闭此窗口..." -ForegroundColor Yellow
+            [void](Read-Host)
+        }
+        exit
+    } else {
+        Write-Host "错误: 请以管理员身份运行此脚本。" -ForegroundColor Red
+        Write-Host "  方式 1: 右键此脚本 -> 用 PowerShell 运行 (会自动弹 UAC 提权)" -ForegroundColor White
+        Write-Host "  方式 2: 在管理员 PowerShell 中执行: .\uninstall.ps1" -ForegroundColor White
+        exit 1
+    }
+}
+
+try {
 Write-Host "=== ECC Fan Controller 卸载程序 ===" -ForegroundColor Cyan
 Write-Host ""
 
@@ -19,18 +56,11 @@ $InstallPath = [System.IO.Path]::GetFullPath($InstallPath).TrimEnd([char[]]@('\'
 $programFilesPrefix = $programFilesRoot + [System.IO.Path]::DirectorySeparatorChar
 if (-not $InstallPath.StartsWith($programFilesPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
     Write-Host "错误: 安装目录必须位于 $programFilesRoot 下。" -ForegroundColor Red
-    exit 1
+    throw "安装目录非法"
 }
 $localAppDataRoot = [System.IO.Path]::GetFullPath([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData))
 $legacyInstallPath = [System.IO.Path]::GetFullPath((Join-Path $localAppDataRoot "ecc"))
 $configPath = [System.IO.Path]::GetFullPath((Join-Path $localAppDataRoot "FanController"))
-
-# 检查是否以管理员身份运行
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    Write-Host "警告: 未以管理员身份运行。删除 Program Files 安装目录和开机自启任务可能失败。" -ForegroundColor Yellow
-    Write-Host ""
-}
 
 # 检查安装目录是否存在
 if (-not (Test-Path $InstallPath)) {
@@ -54,10 +84,11 @@ if (-not $KeepConfig) {
 }
 Write-Host ""
 
-$confirm = Read-Host "确认卸载？(y/N)"
+$confirm = "N"
+try { $confirm = Read-Host "确认卸载？(y/N)" } catch { }
 if ($confirm -ne "y" -and $confirm -ne "Y") {
     Write-Host "已取消卸载。" -ForegroundColor Green
-    exit 0
+    throw "用户取消"
 }
 
 Write-Host ""
@@ -153,3 +184,16 @@ if (-not $KeepConfig) {
     Write-Host "如需完全清理，请手动删除该目录。" -ForegroundColor Yellow
 }
 Write-Host ""
+
+} catch {
+    if ($_.Exception.Message -ne "用户取消") {
+        Write-Host ""
+        Write-Host "卸载失败: $($_.Exception.Message)" -ForegroundColor Red
+    }
+} finally {
+    if ($runFromExplorer) {
+        Write-Host ""
+        Write-Host "按回车键关闭此窗口..." -ForegroundColor Yellow
+        [void](Read-Host)
+    }
+}
