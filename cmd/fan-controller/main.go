@@ -1,14 +1,9 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"runtime"
 	"strings"
@@ -17,24 +12,24 @@ import (
 	"time"
 
 	"github.com/buglyz/ecc/internal/admin"
+	"github.com/buglyz/ecc/internal/app"
 	"github.com/buglyz/ecc/internal/config"
 	"github.com/buglyz/ecc/internal/controller"
-	"github.com/buglyz/ecc/internal/dashboard"
 	"github.com/buglyz/ecc/internal/ec"
+	"github.com/buglyz/ecc/internal/instance"
 	"github.com/buglyz/ecc/internal/logging"
 	"github.com/buglyz/ecc/internal/paths"
 	"github.com/buglyz/ecc/internal/sensors"
 	"github.com/buglyz/ecc/internal/tray"
+	"github.com/buglyz/ecc/internal/ui"
 )
 
 func main() {
-	port := flag.Int("port", 8765, "local dashboard port")
 	interval := flag.Int("interval", 1000, "polling interval in milliseconds (default 1000)")
 	dryRun := flag.Bool("dry-run", false, "log EC writes instead of touching hardware")
 	simulate := flag.Bool("simulate", false, "use simulated CPU/GPU temperatures")
 	skipAdmin := flag.Bool("skip-admin", false, "do not request administrator elevation")
 	noTray := flag.Bool("no-tray", false, "disable system tray icon")
-	noBrowser := flag.Bool("no-browser", false, "do not auto-open browser")
 	flag.Parse()
 
 	pollInterval, err := pollIntervalFromMilliseconds(*interval)
@@ -42,17 +37,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "invalid --interval: %v\n", err)
 		os.Exit(2)
 	}
-	if err := validateDashboardPort(*port); err != nil {
-		fmt.Fprintf(os.Stderr, "invalid --port: %v\n", err)
-		os.Exit(2)
-	}
-	requestedDashboardURL := "http://" + dashboard.BindAddress(*port)
-	if *port != 0 && dashboardAlreadyRunning(requestedDashboardURL) {
-		if !*noBrowser {
-			openBrowser(requestedDashboardURL)
-		}
+	releaseInstance, alreadyRunning, err := instance.Acquire()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "无法建立单实例锁: %v\n", err)
 		return
 	}
+	if alreadyRunning {
+		ui.ActivateExisting()
+		return
+	}
+	defer releaseInstance()
 
 	admin.SetDPIAwareness()
 	runtimePaths := paths.Discover(controller.AppName)
@@ -112,46 +106,38 @@ func main() {
 	fan := controller.NewFanControllerWithRPM(reader, writer, fanReader, cfg.Curve, cfg.Strategy, pollInterval, logger)
 	fan.SetManual(cfg.ManualSpeedPtr())
 
-	// 在 Start() 启动 HTTP goroutine 之前快照这些字段：server 持有 &cfg，
-	// handleConfig 会在请求中写回 *s.cfg，启动后再裸读 cfg 即构成数据竞争。
 	logStrategy, logManualEnabled, logManualSpeed := cfg.Strategy, cfg.ManualEnabled, cfg.ManualSpeed
 	minimized := cfg.Minimize == 1
-
-	server := dashboard.New(dashboard.BindAddress(*port), runtimePaths, &cfg, fan, logger)
-	if err := server.Start(); err != nil {
-		if *port != 0 && dashboardAlreadyRunning(requestedDashboardURL) {
-			logger.Printf("检测到已运行实例: %s", requestedDashboardURL)
-			if !*noBrowser {
-				openBrowser(requestedDashboardURL)
-			}
-			return
-		}
-		logger.Printf("Web 控制台启动失败: %v", err)
-		return
-	}
-
-	// 先成功占用控制台端口，再启动硬件控制循环。重复启动时第二个进程会在上方退出，
-	// 不会短暂并发写 EC，也不会在退出清理时释放第一个实例的风扇控制权。
 	fan.Start()
 	defer fan.Stop()
-
-	dashURL := server.URL()
-	logger.Printf("应用启动完成: url=%s strategy=%s manual_enabled=%t manual_speed=%d dry_run=%t simulate=%t",
-		dashURL, logStrategy, logManualEnabled, logManualSpeed, *dryRun, *simulate)
-
-	if !*noBrowser && !minimized {
-		openBrowser(dashURL)
-	}
 
 	exitCh := make(chan struct{})
 	var exitOnce sync.Once
 	triggerExit := func() {
 		exitOnce.Do(func() { close(exitCh) })
 	}
+	service := app.New(runtimePaths, &cfg, fan, logger)
+	window := ui.New(service, triggerExit, !*noTray)
+	if err := window.Start(!minimized); err != nil {
+		logger.Printf("原生 UI 启动失败: %v", err)
+		return
+	}
+	logger.Printf("应用启动完成: strategy=%s manual_enabled=%t manual_speed=%d dry_run=%t simulate=%t",
+		logStrategy, logManualEnabled, logManualSpeed, *dryRun, *simulate)
+
+	go func() {
+		signals := make(chan os.Signal, 2)
+		signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+		defer signal.Stop(signals)
+		select {
+		case <-signals:
+			triggerExit()
+		case <-exitCh:
+		}
+	}()
 
 	if !*noTray {
-		onShow := func() { openBrowser(dashURL) }
-		trayIcon := tray.New(onShow, triggerExit)
+		trayIcon := tray.New(window.Show, triggerExit)
 
 		// 如果配置损坏，闪动图标提醒用户（日志已记录详细信息）
 		if configCorrupted {
@@ -178,17 +164,6 @@ func main() {
 		}()
 
 		go func() {
-			signals := make(chan os.Signal, 2)
-			signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-			select {
-			case <-signals:
-				triggerExit()
-			case <-exitCh:
-			}
-			signal.Stop(signals)
-		}()
-
-		go func() {
 			<-exitCh
 			trayIcon.Stop()
 		}()
@@ -196,14 +171,9 @@ func main() {
 		runtime.LockOSThread()
 		trayIcon.Run()
 	} else {
-		waitForExit()
+		<-exitCh
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Printf("Web 控制台关闭失败: %v", err)
-	}
+	window.Close()
 }
 
 func requiredRuntimeFiles(runtimePaths paths.Paths, dryRun bool, simulate bool) []string {
@@ -231,47 +201,4 @@ func pollIntervalFromMilliseconds(milliseconds int) (time.Duration, error) {
 		return 0, fmt.Errorf("is too large")
 	}
 	return time.Duration(milliseconds) * time.Millisecond, nil
-}
-
-func validateDashboardPort(port int) error {
-	if port < 0 || port > 65535 {
-		return fmt.Errorf("must be between 0 and 65535")
-	}
-	return nil
-}
-
-func dashboardAlreadyRunning(baseURL string) bool {
-	client := http.Client{Timeout: 750 * time.Millisecond}
-	resp, err := client.Get(strings.TrimRight(baseURL, "/") + "/api/health")
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return false
-	}
-	var health struct {
-		OK   bool      `json:"ok"`
-		Time time.Time `json:"time"`
-	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 4*1024)).Decode(&health); err != nil {
-		return false
-	}
-	return health.OK && !health.Time.IsZero()
-}
-
-func waitForExit() {
-	signals := make(chan os.Signal, 2)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-	<-signals
-}
-
-func openBrowser(url string) {
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	} else {
-		cmd = exec.Command("xdg-open", url)
-	}
-	_ = cmd.Start()
 }

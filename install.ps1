@@ -124,8 +124,8 @@ Write-Host "桌面快捷方式: $shortcutPath" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "使用说明:" -ForegroundColor Yellow
 Write-Host "  1. 双击桌面快捷方式启动程序" -ForegroundColor White
-Write-Host "  2. 浏览器会自动打开控制面板 (http://localhost:8765)" -ForegroundColor White
-Write-Host "  3. 在控制面板中可以设置开机自启、调整风扇曲线等" -ForegroundColor White
+Write-Host "  2. 原生控制窗口会自动打开" -ForegroundColor White
+Write-Host "  3. 在控制窗口中可以设置开机自启、调整风扇曲线等" -ForegroundColor White
 Write-Host ""
 Write-Host "配置文件位置: $env:LOCALAPPDATA\FanController\" -ForegroundColor Cyan
 Write-Host "日志文件位置: $env:LOCALAPPDATA\FanController\fan_controller.log" -ForegroundColor Cyan

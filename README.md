@@ -2,13 +2,12 @@
 
 [![Build and Test](https://github.com/buglyz/ecc/actions/workflows/build.yml/badge.svg)](https://github.com/buglyz/ecc/actions/workflows/build.yml) [![Manual Release](https://github.com/buglyz/ecc/actions/workflows/release.yml/badge.svg)](https://github.com/buglyz/ecc/actions/workflows/release.yml)
 
-笔记本 EC（Embedded Controller）风扇控制器：通过写入 EC 寄存器实现自定义风扇转速曲线，搭载现代化玻璃态 Web UI。纯 Go 标准库实现，单文件运行，无外部运行时依赖。
+笔记本 EC（Embedded Controller）风扇控制器：通过写入 EC 寄存器实现自定义风扇转速曲线，搭载轻量 Windows 原生控制窗口。纯 Go 标准库实现，无浏览器或 WebView 运行时依赖。
 
 > 由[此 B 站项目](https://www.bilibili.com/video/BV1oaaoeFEzY/?share_source=copy_web&vd_source=02adb0cd5f8f9003d535f030aa4f3266)修改而来。
 
 ## 目录
 
-- [预览](#预览)
 - [核心特性](#-核心特性)
 - [快速开始](#-快速开始)
 - [命令行参数](#命令行参数)
@@ -18,22 +17,16 @@
 - [项目结构](#-项目结构)
 - [故障排查](#-故障排查)
 
-## 预览
-
-![预览 1](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMJai6J77BSz8rw8Bt4twWfKI-JOY0AAsUQaxuqN3hViRKhQeE5-f4BAAMCAAN3AAM8BA.png)
-![预览 2](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMLai6J89hSBEUPxtFxgOsAAX-gFk9AAALGEGsbqjd4VWGbIgQZAy2qAQADAgADdwADPAQ.png)
-
 ## 🌟 核心特性
 
-- 🎨 **现代化玻璃态 Web UI** — Fluent/Glassmorphism 设计，深色/浅色自适应，响应式布局。
-- 📈 **双轨制曲线编辑器** — 画布上拖拽控制点，或在表格中精确键入温度/转速，双向实时同步。
-- 📊 **实时监控图表** — CPU/GPU 温度与风扇响应趋势，回溯范围 1–480 分钟可调。
+- 🪟 **Windows 原生 UI** — 使用系统控件实现，无 HTTP 服务、浏览器或 WebView 进程。
+- 📈 **曲线编辑器** — 直接精确键入 5 个温度/转速控制点。
+- 📊 **实时状态** — 显示 CPU/GPU、目标温度、设定转速与可用时的实际 RPM。
 - ⚙️ **多模式调速** — 自动模式支持加权 / 取最大值 / 仅 CPU / 仅 GPU 四种温度策略；手动模式一键锁定绝对转速。
 - 🕹️ **场景预设** — 内置 静音 / 平衡 / 性能 三挡，支持创建、修改、保存个人挡位。
 - 🚀 **系统级集成** — 动态托盘图标、开机自启动（任务计划程序，免 UAC 弹窗）、启动自动提权。
-- 🧭 **重复启动保护** — 已有实例运行时直接打开现有控制台，不启动第二套硬件控制循环。
-- 💬 **可见操作反馈** — 配置、预设和开机自启动的成功或失败会在页面内明确提示。
-- 🔒 **API 跨域防护** — `/api/*` 端点校验来源，拒绝恶意网页 CSRF 篡改风扇配置。
+- 🧭 **重复启动保护** — 已有实例运行时直接唤醒原生窗口，不启动第二套硬件控制循环。
+- 💬 **可见操作反馈** — 配置、预设和开机自启动的成功或失败会在窗口内明确提示。
 - 🛡️ **健壮性** — 温度传感器掉线指数退避重启、EC 写入失败托盘告警、配置损坏自动备份恢复。
 
 ## 🚀 快速开始
@@ -56,8 +49,8 @@
 
 1. 从 [Releases](https://github.com/buglyz/ecc/releases) 下载并解压，右键 `install.ps1` 并以管理员身份运行 PowerShell；默认安装到 `%ProgramFiles%\ECC`。
 2. 双击 `ecc.exe` 启动，确认 UAC 提权提示。
-3. 系统托盘出现图标，浏览器自动打开控制台 `http://127.0.0.1:8765`。
-4. 在控制台中调整风扇曲线、切换预设、设置开机自启动。
+3. 原生控制窗口与系统托盘图标出现。
+4. 在控制窗口中调整风扇曲线、切换预设、设置开机自启动。
 
 > 卸载：运行 `uninstall.ps1`（加 `-KeepConfig` 可保留配置）。
 
@@ -65,13 +58,11 @@
 
 | 参数 | 默认 | 说明 |
 |------|------|------|
-| `--port` | `8765` | Web 控制台端口 |
 | `--interval` | `1000` | 正整数采样间隔（毫秒） |
 | `--dry-run` | 关 | 仅记录 EC 写入，不操作硬件 |
 | `--simulate` | 关 | 使用模拟温度数据（同时启用 dry-run） |
 | `--skip-admin` | 关 | 跳过管理员权限检查 |
 | `--no-tray` | 关 | 禁用系统托盘图标 |
-| `--no-browser` | 关 | 启动时不自动打开浏览器 |
 
 ## 🔬 工作原理
 
@@ -93,8 +84,8 @@
 │0xB0-0xB3 │        └─────────────────────────────────────────────┘
                               ↑                    ↓
                          ┌─────────┐         ┌──────────┐
-                         │ Web UI  │←───────→│  配置     │
-                         │ 曲线编辑 │  HTTP   │ JSON 持久化│
+                         │ 原生 UI │←───────→│  配置     │
+                         │ 曲线编辑 │         │ JSON 持久化│
                          └─────────┘   API   └──────────┘
 ```
 
@@ -139,7 +130,7 @@
 - **滞回 (Hysteresis)**：若本周期平均温度与「上次已提交温度」相差 `< 2°C`（`HysteresisTemp`），视为温度已稳定，跳过写入。防止温度在临界点附近来回摆动导致风扇忽快忽慢。
 - **漂移 (Drift)**：若一个周期实际耗时偏离预期（6 × 当前采样间隔 + 抖动容差）超过 `LoopDriftTolerance`（系统卡顿、休眠唤醒等），强制写一次校正。
 - **心跳 (Heartbeat)**：即使温度稳定，每 `30s`（`HeartbeatInterval`）也强制写一次，防止 EC 因固件看门狗把风扇控制权收回。
-- **配置变化**：用户在 Web UI 改了曲线/策略（配置版本号递增），立即强制写入，不等心跳，保证改动秒级生效。
+- **配置变化**：用户在原生 UI 改了曲线/策略（配置版本号递增），立即强制写入，不等心跳，保证改动秒级生效。
 - **手动模式**：直接锁定用户指定的转速百分比，绕过曲线计算。
 
 只有「目标转速变了 **或** 漂移 **或** 心跳到期 **或** 配置变化」时才调用写入。
@@ -235,12 +226,11 @@ EC 固件
 
 > 这两对寄存器是真机 dump 交叉验证得到的：强制 Fan1 从 0% 拉到 100% 时 `0xB0/0xB1` 组合值从 0 跳到约 3800，空闲态约 5000 rpm，且与机器自带控制台读数一致。早期版本曾假设 RPM 在 `0xD0-0xD3`（错误，恒为常量 99）并试过 WMI `RW_GMWMI` 接口（被动 `SELECT *` 只能拿到全零的静态缓冲，该接口实为需要写命令字节才回填的读写通道），两条路径均已废弃。
 
-### 7. Web UI 与配置（`internal/dashboard` · `internal/config`）
+### 7. 原生 UI 与配置（`internal/ui` · `internal/app` · `internal/config`）
 
-- 内嵌 HTTP 服务器（默认 `127.0.0.1:8765`）提供单页 Web 控制台，前端通过 `go:embed` 打进 exe。
-- 前端每秒轮询 `/api/state` 拉取最新温度/转速/历史，用 Canvas 画实时曲线；改曲线时 POST `/api/config`。
+- 原生窗口每秒读取控制器快照，显示最新温度、目标温度、设定转速和 RPM。
+- 设置、预设和开机自启动操作由 `internal/app` 直接调用配置与系统集成模块，无 HTTP API 和本地监听端口。
 - 配置以 JSON 持久化到 `%LOCALAPPDATA%\FanController\`，写入采用「临时文件 + 原子重命名」防止写一半断电损坏；加载时若发现损坏会自动备份为 `.corrupted.<时间戳>` 并回退默认配置，同时闪动托盘图标提醒。
-- 所有写接口 (`/api/config`、`/api/preset`、`/api/startup`) 校验 `Origin` 头，只允许本机回环来源，防止恶意网页 CSRF 篡改风扇设置。
 
 ### 关键常量一览（`internal/controller/constants.go`）
 
@@ -282,16 +272,18 @@ go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 cmd/fan-controller/     程序入口
 internal/
   admin/                管理员提权 + DPI 感知
+  app/                  原生 UI 的配置/预设/开机自启动应用服务
   config/               配置加载/保存/归一化（JSON + pickle 兼容），损坏自动备份
   controller/           风扇控制循环核心逻辑（采样/策略/插值/滞回/心跳）
-  dashboard/            Web 控制台（HTTP API + go:embed 前端）
   ec/                   EC 寄存器读写（调用 ec-probe.exe）
+  instance/             Windows 单实例锁
   logging/              日志轮转
   paths/                运行时路径发现
   process/              Windows 隐藏窗口进程属性
   sensors/              温度读取（PowerShell + LHM）
   startup/              开机自启动（任务计划程序）
   tray/                 系统托盘图标（Win32 Shell_NotifyIcon）
+  ui/                   Windows 原生控制窗口
 ```
 
 ## 🔧 故障排查

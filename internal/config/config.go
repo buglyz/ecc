@@ -79,7 +79,7 @@ func Normalize(cfg Config) Config {
 	if !controller.ValidStrategy(cfg.Strategy) {
 		cfg.Strategy = controller.DefaultStrategy
 	}
-	if cfg.Theme != "dark" {
+	if cfg.Theme != "dark" && cfg.Theme != "system" {
 		cfg.Theme = "light"
 	}
 	cfg.ManualSpeed = int(clamp(float64(cfg.ManualSpeed), 0, 100))

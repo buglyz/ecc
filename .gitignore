@@ -18,3 +18,8 @@ FanController/
 
 .claude/
 .DS_Store
+
+# 本地构建产物
+ecc-gio-test.exe
+ui-preview.exe
+ui-preview-console.exe

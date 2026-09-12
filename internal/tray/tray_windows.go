@@ -148,9 +148,9 @@ type Tray struct {
 
 	// 已渲染图标的内容与 tooltip。Update 发现显示值没变时跳过 GDI 重建与
 	// nimModify；Alert 置红后清空，强制下一次 Update 重建恢复正常图标。
-	lastSpec      *iconSpec
-	lastTooltip   string
-	iconDirty     bool
+	lastSpec    *iconSpec
+	lastTooltip string
+	iconDirty   bool
 }
 
 var instance *Tray
