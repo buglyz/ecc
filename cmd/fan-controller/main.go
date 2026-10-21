@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -21,6 +22,7 @@ import (
 	"github.com/buglyz/ecc/internal/controller"
 	"github.com/buglyz/ecc/internal/dashboard"
 	"github.com/buglyz/ecc/internal/ec"
+	"github.com/buglyz/ecc/internal/instance"
 	"github.com/buglyz/ecc/internal/logging"
 	"github.com/buglyz/ecc/internal/paths"
 	"github.com/buglyz/ecc/internal/sensors"
@@ -35,7 +37,18 @@ func main() {
 	skipAdmin := flag.Bool("skip-admin", false, "do not request administrator elevation")
 	noTray := flag.Bool("no-tray", false, "disable system tray icon")
 	noBrowser := flag.Bool("no-browser", false, "do not auto-open browser")
+	shutdown := flag.Bool("shutdown", false, "signal a running instance to exit gracefully")
 	flag.Parse()
+
+	// 安装器/卸载器的优雅退出入口。必须在提权、互斥体和配置读写之前处理：
+	// 第二个进程只负责发信号，不启动任何硬件控制逻辑。
+	if *shutdown {
+		if err := instance.SignalShutdown(instance.DefaultShutdownEventName); err != nil {
+			fmt.Fprintf(os.Stderr, "发送退出信号失败: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	pollInterval, err := pollIntervalFromMilliseconds(*interval)
 	if err != nil {
@@ -62,6 +75,34 @@ func main() {
 	if !admin.RequireAdmin(*skipAdmin || *dryRun || *simulate) {
 		logger.Print("需要管理员权限，已尝试重新启动为管理员")
 		return
+	}
+
+	// 单实例保护必须与端口无关：不同 --port 的两个进程会并发写同一 EC，
+	// 先退出的实例还会写 0xFF 释放另一个实例的控制权。在任何硬件初始化前获取
+	// 全局命名互斥体，拿不到就退出（并尝试打开已有实例的控制台）。
+	guard, acquired, err := instance.Acquire(instance.DefaultMutexName)
+	if err != nil {
+		logger.Printf("单实例互斥体创建失败: %v", err)
+		fmt.Fprintf(os.Stderr, "单实例互斥体创建失败: %v\n", err)
+		os.Exit(1)
+	}
+	if !acquired {
+		logger.Print("检测到已有风扇控制实例在运行，本次启动退出")
+		if !*noBrowser {
+			if runningURL := runningDashboardURL(runtimePaths, requestedDashboardURL); runningURL != "" {
+				openBrowser(runningURL)
+			}
+		}
+		return
+	}
+	defer guard.Release()
+
+	// 监听安装器/卸载器发来的优雅退出事件；Close 时注销句柄。
+	shutdownListener, err := instance.NewShutdownListener(instance.DefaultShutdownEventName)
+	if err != nil {
+		logger.Printf("退出信号监听创建失败: %v", err)
+	} else {
+		defer shutdownListener.Close()
 	}
 
 	if missing := requiredRuntimeFiles(runtimePaths, *dryRun, *simulate); len(missing) > 0 {
@@ -136,6 +177,13 @@ func main() {
 	defer fan.Stop()
 
 	dashURL := server.URL()
+	// 记录控制台地址，供后续使用不同 --port 启动的实例打开已运行的控制台。
+	instanceURLPath := filepath.Join(runtimePaths.StateDir, "instance.url")
+	if err := writeInstanceURL(instanceURLPath, dashURL); err != nil {
+		logger.Printf("实例地址文件写入失败: %v", err)
+	} else {
+		defer os.Remove(instanceURLPath)
+	}
 	logger.Printf("应用启动完成: url=%s strategy=%s manual_enabled=%t manual_speed=%d dry_run=%t simulate=%t",
 		dashURL, logStrategy, logManualEnabled, logManualSpeed, *dryRun, *simulate)
 
@@ -147,6 +195,17 @@ func main() {
 	var exitOnce sync.Once
 	triggerExit := func() {
 		exitOnce.Do(func() { close(exitCh) })
+	}
+
+	if shutdownListener != nil {
+		go func() {
+			select {
+			case <-shutdownListener.Done():
+				logger.Print("收到外部退出信号，正在关闭")
+				triggerExit()
+			case <-exitCh:
+			}
+		}()
 	}
 
 	if !*noTray {
@@ -196,7 +255,7 @@ func main() {
 		runtime.LockOSThread()
 		trayIcon.Run()
 	} else {
-		waitForExit()
+		waitForExit(exitCh)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -240,6 +299,28 @@ func validateDashboardPort(port int) error {
 	return nil
 }
 
+func writeInstanceURL(path, url string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(url+"\n"), 0o644)
+}
+
+// runningDashboardURL 优先读取上一次实例写入的控制台地址，其次回退到本次请求的
+// 端口。只有 /api/health 校验通过才返回，避免崩溃残留的地址文件误导用户。
+func runningDashboardURL(runtimePaths paths.Paths, fallback string) string {
+	path := filepath.Join(runtimePaths.StateDir, "instance.url")
+	if data, err := os.ReadFile(path); err == nil {
+		if url := strings.TrimSpace(string(data)); url != "" && dashboardAlreadyRunning(url) {
+			return url
+		}
+	}
+	if dashboardAlreadyRunning(fallback) {
+		return fallback
+	}
+	return ""
+}
+
 func dashboardAlreadyRunning(baseURL string) bool {
 	client := http.Client{Timeout: 750 * time.Millisecond}
 	resp, err := client.Get(strings.TrimRight(baseURL, "/") + "/api/health")
@@ -260,10 +341,14 @@ func dashboardAlreadyRunning(baseURL string) bool {
 	return health.OK && !health.Time.IsZero()
 }
 
-func waitForExit() {
+func waitForExit(exitCh <-chan struct{}) {
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-	<-signals
+	defer signal.Stop(signals)
+	select {
+	case <-signals:
+	case <-exitCh:
+	}
 }
 
 func openBrowser(url string) {

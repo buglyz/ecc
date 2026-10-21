@@ -34,10 +34,30 @@ jobs:
         run: |
           go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Installer
+        run: |
+          $version = "${{ github.event.inputs.tag }}"
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $iscc) { throw '未找到 ISCC.exe' }
+          $root = (Get-Location).Path
+          $dist = Join-Path $root 'dist'
+          & $iscc "/DAppVersion=$version" "/DSourceRoot=$root" "/O$dist" 'installer\ecc.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup 编译失败' }
+
       - name: Package Release
         run: |
           $version = "${{ github.event.inputs.tag }}"
           $zipName = "ecc-$version-windows-amd64.zip"
+          $setupName = "ECC-Setup-$version.exe"
+          if (-not (Test-Path -Path "dist\$setupName")) {
+            throw "安装包未生成: dist\$setupName"
+          }
 
           New-Item -ItemType Directory -Force -Path release
           Copy-Item -Path ecc.exe -Destination release/
@@ -58,10 +78,14 @@ jobs:
 
           # 生成 SHA256 校验和
           $hash = (Get-FileHash -Path $zipName -Algorithm SHA256).Hash
+          $setupHash = (Get-FileHash -Path "dist\$setupName" -Algorithm SHA256).Hash
           "$hash  $zipName" | Out-File -FilePath SHA256SUMS.txt -Encoding utf8
+          "$setupHash  $setupName" | Out-File -FilePath SHA256SUMS.txt -Encoding utf8 -Append
 
           Write-Host "Package: $zipName"
           Write-Host "SHA256: $hash"
+          Write-Host "Installer: $setupName"
+          Write-Host "SHA256: $setupHash"
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
@@ -69,16 +93,21 @@ jobs:
           tag_name: ${{ github.event.inputs.tag }}
           name: Release ${{ github.event.inputs.tag }}
           files: |
+            dist/ECC-Setup-${{ github.event.inputs.tag }}.exe
             ecc-${{ github.event.inputs.tag }}-windows-amd64.zip
             SHA256SUMS.txt
           body: |
             ## ECC Fan Controller ${{ github.event.inputs.tag }}
 
-            ### 下载与安装
-            1. 下载 `ecc-${{ github.event.inputs.tag }}-windows-amd64.zip`
-            2. 解压到任意目录
-            3. 右键 `install.ps1` → 以管理员身份运行 PowerShell
-            4. 按提示完成安装
+            ### 方式一：安装包（推荐）
+            1. 下载 `ECC-Setup-${{ github.event.inputs.tag }}.exe`
+            2. 双击运行，按向导完成安装（会自动请求管理员权限）
+            3. 安装完成后从桌面或开始菜单启动
+
+            ### 方式二：便携版 ZIP
+            1. 下载 `ecc-${{ github.event.inputs.tag }}-windows-amd64.zip` 并解压
+            2. 右键 `install.ps1` → 以管理员身份运行 PowerShell
+            3. 按提示完成安装
 
             ### 使用说明
             - 双击桌面快捷方式启动程序
@@ -86,11 +115,14 @@ jobs:
             - 在控制面板中设置开机自启、调整风扇曲线
 
             ### 卸载
-            运行 `uninstall.ps1` 脚本（位于安装目录或解压目录）
+            - 安装包版本：Windows「设置 → 应用 → 已安装的应用」中卸载 ECC Fan Controller
+            - 便携版：运行 `uninstall.ps1`
 
             ### 校验文件完整性
             ```powershell
-            # 验证 SHA256
+            # 安装包
+            (Get-FileHash ECC-Setup-${{ github.event.inputs.tag }}.exe).Hash
+            # 便携版
             (Get-FileHash ecc-${{ github.event.inputs.tag }}-windows-amd64.zip).Hash
             # 对比 SHA256SUMS.txt 中的值
             ```

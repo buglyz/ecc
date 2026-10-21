@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -59,18 +60,37 @@ func TestStopReleasesBothFans(t *testing.T) {
 	}
 }
 
-func TestInitialSpeedWrittenAfterStart(t *testing.T) {
+// 自动模式在拿到首个有效温度前不得接管 EC：启动窗口内不应出现任何写入。
+func TestAutoModeWaitsForFirstValidTemperature(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping timing-dependent control loop test in -short mode")
 	}
 	writer := &syncWriter{ok: true}
-	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 0, log.New(testWriter{t}, "", 0))
+	fan := NewFanController(testReader{}, writer, DefaultCurve, DefaultStrategy, 50*time.Millisecond, log.New(testWriter{t}, "", 0))
 	fan.Start()
-	// The loop sleeps 1s before writing the initial speed.
-	time.Sleep(1500 * time.Millisecond)
+	// 1 秒启动等待 + 首个周期 300ms，睡眠 1.2 秒时首个周期尚未走完。
+	time.Sleep(1200 * time.Millisecond)
+	writes := writer.snapshot()
 	fan.Stop()
 
-	want := toHex(int(DefaultCurve[0].Speed()))
+	if len(writes) != 0 {
+		t.Fatalf("自动模式在无有效温度时不应写 EC, writes=%v", writes)
+	}
+}
+
+// 自动模式拿到有效温度后，首周期结束时应按曲线写入目标转速。
+func TestAutoModeWritesAfterFirstValidTemperature(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping timing-dependent control loop test in -short mode")
+	}
+	reader := &fixedTempReader{cpu: 45.0, gpu: 45.0}
+	writer := &syncWriter{ok: true}
+	fan := NewFanController(reader, writer, DefaultCurve, DefaultStrategy, 50*time.Millisecond, log.New(testWriter{t}, "", 0))
+	fan.Start()
+	time.Sleep(2 * time.Second)
+	fan.Stop()
+
+	want := toHex(ClampSpeed(InterpolateCurve(DefaultCurve, 45)))
 	writes := writer.snapshot()
 	var sawFan1, sawFan2 bool
 	for _, write := range writes {
@@ -82,9 +102,47 @@ func TestInitialSpeedWrittenAfterStart(t *testing.T) {
 		}
 	}
 	if !sawFan1 || !sawFan2 {
-		t.Fatalf("expected initial speed %q written to both fans, fan1=%t fan2=%t, writes=%v", want, sawFan1, sawFan2, writes)
+		t.Fatalf("expected target speed %q written to both fans, fan1=%t fan2=%t, writes=%v", want, sawFan1, sawFan2, writes)
 	}
 }
+
+// 接管风扇后温度持续不可用，应释放 EC 控制权交还固件，而不是停在最后转速。
+func TestNoTempFailsafeReleasesControl(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping timing-dependent control loop test in -short mode")
+	}
+	reader := &switchableReader{cpu: 45.0, gpu: 45.0}
+	writer := &syncWriter{ok: true}
+	fan := NewFanController(reader, writer, DefaultCurve, DefaultStrategy, 30*time.Millisecond, log.New(testWriter{t}, "", 0))
+	fan.Start()
+	// 1 秒启动等待 + 首个周期 180ms，确保已经接管风扇。
+	time.Sleep(1600 * time.Millisecond)
+	reader.setBroken(true)
+	// NoTempFailSafeCycles(3) 个周期 × 180ms ≈ 540ms，留足余量。
+	time.Sleep(1200 * time.Millisecond)
+
+	v1, ok := writer.last(ECRegFan1)
+	fan.Stop()
+	if !ok || v1 != ECFanRelease {
+		t.Fatalf("温度持续缺失后 fan1=%q (ok=%t), want release %q", v1, ok, ECFanRelease)
+	}
+}
+
+type switchableReader struct {
+	cpu, gpu float64
+	broken   atomic.Bool
+}
+
+func (r *switchableReader) Read() Temps {
+	if r.broken.Load() {
+		return Temps{}
+	}
+	return Temps{CPU: &r.cpu, GPU: &r.gpu}
+}
+
+func (r *switchableReader) Close() error { return nil }
+
+func (r *switchableReader) setBroken(broken bool) { r.broken.Store(broken) }
 
 func TestLatestReflectsManualMode(t *testing.T) {
 	writer := &syncWriter{ok: true}
