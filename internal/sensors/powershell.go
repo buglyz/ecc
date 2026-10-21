@@ -112,6 +112,17 @@ func (r *PowerShellReader) Read() controller.Temps {
 		r.recordFailureLocked()
 		return controller.Temps{}
 	}
+	// 脚本内部异常时会返回 {"cpu":null,"gpu":null}。若把它当成功，失败计数会被
+	// 清零、退避永远不触发，风扇就会停在最后写入的转速。双空一律按失败处理；
+	// 连续失败达到退避阈值时顺带重启助手，避免 LHM 内部状态损坏后永久空转。
+	if payload.CPU == nil && payload.GPU == nil {
+		r.Logger.Print("温度读取无有效数据（CPU/GPU 均为空），按失败处理")
+		r.recordFailureLocked()
+		if r.consecutiveFails >= 3 {
+			r.resetLocked()
+		}
+		return controller.Temps{}
+	}
 
 	// Success - reset failure counter
 	if r.consecutiveFails > 0 {

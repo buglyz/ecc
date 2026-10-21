@@ -26,13 +26,17 @@ const (
 	// 无需每次采样都做，节流到该间隔，两次之间复用上次结果，避免每秒一轮进程启动的持续开销。
 	RPMReadInterval   = 5 * time.Second
 	HistoryMaxSamples = 28800
-	CPUWeight         = 0.7
-	CurvePoints       = 5
-	CurveTempMin      = 30.0
-	CurveTempMax      = 100.0
-	CurveSpeedMin     = 0.0
-	CurveSpeedMax     = 100.0
-	DefaultStrategy   = "weighted"
+	// NoTempFailSafeCycles：连续多少个周期拿不到任何有效温度后，判定温度数据
+	// 已不可信，主动释放 EC 控制权交还固件，避免风扇长期停在最后写入的低速档。
+	// 按默认 6 样本/周期、1 秒/样本计算约 18 秒。
+	NoTempFailSafeCycles = 3
+	CPUWeight            = 0.7
+	CurvePoints          = 5
+	CurveTempMin         = 30.0
+	CurveTempMax         = 100.0
+	CurveSpeedMin        = 0.0
+	CurveSpeedMax        = 100.0
+	DefaultStrategy      = "weighted"
 )
 
 var DefaultCurve = []Point{{40, 30}, {55, 40}, {70, 60}, {80, 85}, {90, 100}}

@@ -37,6 +37,21 @@ jobs:
         run: |
           go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Installer
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $iscc) { throw '未找到 ISCC.exe' }
+          $root = (Get-Location).Path
+          $dist = Join-Path $root 'dist'
+          & $iscc '/DAppVersion=dev' "/DSourceRoot=$root" "/O$dist" 'installer\ecc.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup 编译失败' }
+
       - name: Package Artifact
         run: |
           New-Item -ItemType Directory -Force -Path dist

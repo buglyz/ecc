@@ -2,7 +2,10 @@ package dashboard
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
 	_ "embed"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"html/template"
@@ -36,6 +39,11 @@ type Server struct {
 	startup    startupController
 
 	startupCached atomic.Bool
+	// token 是本次进程启动时生成的会话凭证，注入页面并用于校验所有写接口，
+	// 防止本机低权限进程或 DNS rebinding 页面直接篡改风扇配置。
+	token string
+	// allowedHosts 只接受回环地址 + 实际监听端口，阻断 DNS rebinding。
+	allowedHosts map[string]struct{}
 }
 
 type startupController interface {
@@ -73,12 +81,18 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/preset", s.handlePreset)
 	mux.HandleFunc("/api/startup", s.handleStartup)
 	mux.HandleFunc("/api/health", s.handleHealth)
-	handler := rejectCrossOrigin(mux)
+	token, err := newSessionToken()
+	if err != nil {
+		return fmt.Errorf("生成会话令牌失败: %w", err)
+	}
 	listener, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return err
 	}
 	s.actualAddr = listener.Addr().String()
+	s.token = token
+	s.allowedHosts = loopbackHosts(s.actualAddr)
+	handler := s.secure(rejectCrossOrigin(mux))
 	s.startupCached.Store(s.startup.IsEnabled(startup.Identifier))
 	s.httpServer = &http.Server{Addr: s.actualAddr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second}
 	s.logger.Printf("Web 控制台已启动: http://%s", s.actualAddr)
@@ -148,6 +162,75 @@ func (s *Server) saveAndApplyLocked(cfg config.Config) (config.Config, error) {
 }
 
 var indexTemplate = template.Must(template.New("index").Parse(indexHTML))
+
+const tokenHeader = "X-ECC-Token"
+
+type indexData struct {
+	Token string
+}
+
+func newSessionToken() (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
+// loopbackHosts 根据实际监听地址生成允许的 Host 集合。服务只绑定 127.0.0.1，
+// 因此除回环地址外的 Host（包括 DNS rebinding 使用的攻击者域名）一律拒绝。
+func loopbackHosts(addr string) map[string]struct{} {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil || port == "" {
+		return map[string]struct{}{}
+	}
+	return map[string]struct{}{
+		"127.0.0.1:" + port: {},
+		"localhost:" + port: {},
+	}
+}
+
+// secure 统一处理安全响应头、Host 白名单与写接口令牌校验。
+func (s *Server) secure(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := w.Header()
+		header.Set("X-Content-Type-Options", "nosniff")
+		header.Set("X-Frame-Options", "DENY")
+		header.Set("Content-Security-Policy", "frame-ancestors 'none'")
+		header.Set("Referrer-Policy", "no-referrer")
+
+		if _, ok := s.allowedHosts[strings.ToLower(r.Host)]; !ok {
+			http.Error(w, "invalid host", http.StatusForbidden)
+			return
+		}
+		if requiresSessionToken(r) && !s.tokenMatches(r.Header.Get(tokenHeader)) {
+			http.Error(w, "invalid or missing token", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// requiresSessionToken 只保护会改变状态的 /api/* 请求；GET/HEAD 保留给状态查询
+// 与重复实例探测使用。
+func requiresSessionToken(r *http.Request) bool {
+	if !strings.HasPrefix(r.URL.Path, "/api/") {
+		return false
+	}
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return false
+	default:
+		return true
+	}
+}
+
+func (s *Server) tokenMatches(candidate string) bool {
+	if s.token == "" || candidate == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(candidate), []byte(s.token)) == 1
+}
 
 func BindAddress(port int) string {
 	return fmt.Sprintf("127.0.0.1:%d", port)

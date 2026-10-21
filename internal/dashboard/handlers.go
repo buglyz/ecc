@@ -49,7 +49,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := indexTemplate.Execute(w, nil); err != nil {
+	// 页面内含本次启动生成的写接口令牌，禁止浏览器缓存旧页面导致令牌失效。
+	w.Header().Set("Cache-Control", "no-store")
+	if err := indexTemplate.Execute(w, indexData{Token: s.token}); err != nil {
 		s.logger.Printf("首页模板渲染失败: %v", err)
 	}
 }
