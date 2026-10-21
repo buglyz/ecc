@@ -6,6 +6,8 @@
 
 > 由[此 B 站项目](https://www.bilibili.com/video/BV1oaaoeFEzY/?share_source=copy_web&vd_source=02adb0cd5f8f9003d535f030aa4f3266)修改而来。
 
+> 项目主页：[buglyz.github.io/ecc](https://buglyz.github.io/ecc/) · 下载最新版：[Releases](https://github.com/buglyz/ecc/releases/latest)
+
 ## 目录
 
 - [预览](#预览)
@@ -20,8 +22,8 @@
 
 ## 预览
 
-![预览 1](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMJai6J77BSz8rw8Bt4twWfKI-JOY0AAsUQaxuqN3hViRKhQeE5-f4BAAMCAAN3AAM8BA.png)
-![预览 2](https://k-vault-39a.pages.dev/file/AgACAgUAAyEGAATjDinyAAMLai6J89hSBEUPxtFxgOsAAX-gFk9AAALGEGsbqjd4VWGbIgQZAy2qAQADAgADdwADPAQ.png)
+![浅色界面](site/assets/dashboard-light.png)
+![深色界面](site/assets/dashboard-dark.png)
 
 ## 🌟 核心特性
 
@@ -303,6 +305,7 @@ internal/
   sensors/              温度读取（PowerShell + LHM）
   startup/              开机自启动（任务计划程序）
   tray/                 系统托盘图标（Win32 Shell_NotifyIcon）
+site/                   GitHub Pages 项目主页（静态 HTML）
 ```
 
 ## 🔧 故障排查
@@ -311,7 +314,7 @@ internal/
 |------|--------------|
 | 风扇转速不变 | 驱动未加载或寄存器地址不对。管理员 PowerShell 跑 `ec-probe read 0x2C`；若报 `unable to load the winring0 driver` 则驱动问题，若读值不随写入变化则地址不匹配本机型。 |
 | 启动即退出 | 缺少管理员权限或 `assets/` 文件不全。查看日志 `%LOCALAPPDATA%\FanController\fan_controller.log`。 |
-| 无法启用开机自启 | 程序未从 `%ProgramFiles%` 下的受保护安装目录运行。请重新运行管理员安装脚本。 |
+| 无法启用开机自启 | 检查计划任务权限与同名任务冲突。安装在 Program Files 外时会使用普通权限计划任务，登录时需确认一次 UAC，这是预期行为。 |
 | UI 显示温度为空 | LHM/PowerShell 桥接失败。日志会记录退避重启信息；确认 `LibreHardwareMonitorLib.dll` 存在。 |
 | UI 不显示 RPM | 驱动未加载或本机型 RPM 寄存器地址不同（本项目为 `0xB0`–`0xB3`）。属优雅降级，不影响调速。 |
 | 托盘图标闪红 | EC 写入失败告警，通常是驱动未加载，见第一行。 |
