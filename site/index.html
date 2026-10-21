@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ECC Fan Controller · 开源笔记本风扇控制器</title>
+<meta name="description" content="ECC Fan Controller 是一个开源的 Windows 笔记本风扇控制器：读取 CPU/GPU 温度，按自定义曲线调节 EC 转速，并通过本地 Web 控制台实时监控。">
+<meta name="theme-color" content="#4f46e5">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://buglyz.github.io/ecc/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ECC Fan Controller · 开源笔记本风扇控制器">
+<meta property="og:description" content="读取 CPU/GPU 温度，按自定义曲线调节 EC 转速，本地 Web 控制台实时监控。纯 Go 标准库，单文件安装包。">
+<meta property="og:url" content="https://buglyz.github.io/ecc/">
+<meta property="og:image" content="https://buglyz.github.io/ecc/assets/dashboard-light.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ECC Fan Controller · 开源笔记本风扇控制器">
+<meta name="twitter:description" content="读取 CPU/GPU 温度，按自定义曲线调节 EC 转速，本地 Web 控制台实时监控。">
+<meta name="twitter:image" content="https://buglyz.github.io/ecc/assets/dashboard-light.png">
+<link rel="stylesheet" href="assets/site.css">
+<script>
+  (function () {
+    document.documentElement.classList.add('js');
+    try {
+      var forced = new URLSearchParams(window.location.search).get('theme');
+      var saved = localStorage.getItem('ecc-site-theme');
+      var theme = (forced === 'dark' || forced === 'light')
+        ? forced
+        : (saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+      document.documentElement.dataset.theme = theme;
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-fan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="2.1"/>
+    <path d="M12 9.9c-1.1-3.2-.5-5.9 1-7 2.3 1.4 3.1 4.1 1.9 6.7"/>
+    <path d="M14.1 12c3.2-1.1 5.9-.5 7 1-1.4 2.3-4.1 3.1-6.7 1.9"/>
+    <path d="M12 14.1c1.1 3.2.5 5.9-1 7-2.3-1.4-3.1-4.1-1.9-6.7"/>
+    <path d="M9.9 12c-3.2 1.1-5.9.5-7-1 1.4-2.3 4.1-3.1 6.7-1.9"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m20 6-11 11-5-5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.1.79-.25.79-.55v-2.1c-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/>
+  </symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>
+  </symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.7 6.7 0 0 0 9.8 9.8Z"/>
+  </symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h16"/>
+    <circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/>
+    <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/>
+    <circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3v18h18"/>
+    <path d="m7 15 4-5 4 3 4-6"/>
+  </symbol>
+  <symbol id="i-therm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 4a2 2 0 0 1 4 0v9.3a4.5 4.5 0 1 1-4 0Z"/>
+    <path d="M12 8v7"/>
+  </symbol>
+  <symbol id="i-strategy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="6" cy="5" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="18" cy="17" r="2"/>
+    <path d="M6 7v10a2 2 0 0 0 2 2h3M8 5h5a2 2 0 0 1 2 2v8M16 9h-3"/>
+  </symbol>
+  <symbol id="i-preset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4Z"/>
+  </symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.1 17a9 9 0 1 1 15.8 0"/>
+    <path d="M12 13 16 9"/>
+    <circle cx="12" cy="13" r="1.5"/>
+  </symbol>
+  <symbol id="i-tray" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4" width="18" height="13" rx="2"/>
+    <path d="M8 21h8M12 17v4"/>
+  </symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2 4.5 5v6c0 5 3.2 8.6 7.5 11 4.3-2.4 7.5-6 7.5-11V5Z"/>
+    <path d="m9 12 2 2 4-4"/>
+  </symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="16" height="11" rx="2"/>
+    <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+  </symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="12" height="12" rx="2"/>
+    <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
+    <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>
+  </symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>
+  </symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 2.8 20h18.4Z"/>
+    <path d="M12 9v5"/>
+    <circle cx="12" cy="17.2" r=".9" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 11a8 8 0 1 0-2.3 6.7"/>
+    <path d="M20 4v7h-7"/>
+  </symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m8 7-5 5 5 5M16 7l5 5-5 5M13 4l-2 16"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top" aria-label="ECC Fan Controller 首页">
+      <span class="brand-mark"><svg aria-hidden="true"><use href="#i-fan"/></svg></span>
+      <span class="brand-text">ECC<span>Fan Controller</span></span>
+    </a>
+    <nav class="nav" aria-label="主导航">
+      <a href="#features">功能</a>
+      <a href="#how">工作原理</a>
+      <a href="#install">安装</a>
+      <a href="#safety">兼容性</a>
+      <a href="#faq">常见问题</a>
+    </nav>
+    <div class="header-actions">
+      <a class="icon-btn" href="https://github.com/buglyz/ecc" target="_blank" rel="noopener" aria-label="GitHub 仓库">
+        <svg aria-hidden="true"><use href="#i-github"/></svg>
+      </a>
+      <button class="icon-btn" id="themeToggle" type="button" aria-label="切换深色模式">
+        <svg class="icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <a class="btn btn-primary btn-sm" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">下载</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero wrap">
+    <div class="hero-copy">
+      <div class="eyebrow"><span class="dot"></span> Open Source · MIT · Windows 10/11</div>
+      <h1>把风扇控制权<br><span class="grad">交还给你</span></h1>
+      <p class="lead">ECC Fan Controller 是一个开源的 Windows 笔记本风扇控制器。读取 CPU/GPU 温度，按自定义曲线调节 EC 转速，并通过本地 Web 控制台实时监控。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-download"/></svg> 下载安装包
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/buglyz/ecc" target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-github"/></svg> 查看源码
+        </a>
+        <a class="link-arrow" href="#how">先看工作原理 →</a>
+      </div>
+      <ul class="meta-list">
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg> 单文件安装包</li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg> 纯 Go 标准库</li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg> 无遥测 · 本地运行</li>
+        <li><a class="version-pill" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">v1.1.0</a></li>
+      </ul>
+    </div>
+    <div class="hero-visual">
+      <div class="shot-tabs" role="tablist" aria-label="界面主题">
+        <button class="shot-tab active" data-shot="light" type="button" role="tab" aria-selected="true">浅色</button>
+        <button class="shot-tab" data-shot="dark" type="button" role="tab" aria-selected="false">深色</button>
+      </div>
+      <figure class="browser-frame">
+        <div class="browser-bar"><span></span><span></span><span></span><em>127.0.0.1:8765</em></div>
+        <img id="heroShot" src="assets/dashboard-light.png" alt="ECC Fan Controller 控制台浅色界面：CPU/GPU 温度、风扇曲线与历史图表" width="1440" height="1400">
+      </figure>
+      <p class="caption">模拟温度下的控制台界面 · <a id="shotLink" href="assets/dashboard-light.png" target="_blank" rel="noopener">查看大图</a></p>
+    </div>
+  </section>
+
+  <section class="trust wrap" aria-label="项目特性">
+    <span>Go 标准库</span>
+    <span>单实例保护</span>
+    <span>原子配置写入</span>
+    <span>SHA-256 校验</span>
+    <span>MIT License</span>
+  </section>
+
+  <section id="features" class="section wrap">
+    <div class="section-head">
+      <div class="eyebrow">核心特性</div>
+      <h2>该有的都有，不该有的不打扰</h2>
+      <p>从曲线编辑到实时监控，从托盘集成到硬件安全兜底，全部围绕一个目标：让风扇安静、稳定、可预期。</p>
+    </div>
+    <div class="feature-grid">
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-sliders"/></svg></div>
+        <h3>双轨曲线编辑</h3>
+        <p>画布拖拽控制点，或在表格中精确键入温度/转速，两种方式实时同步。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-chart"/></svg></div>
+        <h3>实时温度与转速</h3>
+        <p>CPU/GPU 温度、目标温度、风扇输出与实际 RPM 一屏掌握，历史窗口 1–480 分钟可调。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-therm"/></svg></div>
+        <h3>四种温度策略</h3>
+        <p>加权、取最大值、仅 CPU、仅 GPU。不同负载场景下，选择更符合你机型的合并方式。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-preset"/></svg></div>
+        <h3>场景预设</h3>
+        <p>内置静音 / 平衡 / 性能三挡，支持新建、保存、恢复与删除自定义挡位。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-gauge"/></svg></div>
+        <h3>手动锁定转速</h3>
+        <p>需要绝对安静或满速散热时，一键锁定 0–100% 固定转速，随时切回自动曲线。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-tray"/></svg></div>
+        <h3>托盘与开机自启</h3>
+        <p>动态托盘图标、开机自启与启动提权；Program Files 安装免 UAC，自定义目录登录时请求一次 UAC。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-shield"/></svg></div>
+        <h3>硬件安全兜底</h3>
+        <p>首个有效温度前不接管 EC；连续无温度时释放控制权交还固件；写入失败托盘告警。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-lock"/></svg></div>
+        <h3>本地优先</h3>
+        <p>控制台只监听 127.0.0.1，写接口校验会话令牌与 Host；没有账号，没有云端，没有遥测。</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="how" class="section wrap">
+    <div class="section-head">
+      <div class="eyebrow">工作原理</div>
+      <h2>一个每秒运转的闭环</h2>
+      <p>读温度 → 合并温度 → 曲线插值 → 写 EC。程序不直接读硬件传感器，而是通过常驻 PowerShell 进程桥接 LibreHardwareMonitor。</p>
+    </div>
+    <div class="steps">
+      <article class="step reveal">
+        <span class="step-no">01</span>
+        <h3>采集温度</h3>
+        <p>常驻 PowerShell 进程加载 LHM，读取 CPU/GPU 全部温度传感器；子进程异常时指数退避重启。</p>
+        <span class="step-tech">PowerShell + LHM</span>
+      </article>
+      <article class="step reveal">
+        <span class="step-no">02</span>
+        <h3>合并目标温度</h3>
+        <p>按当前策略把两路温度合并成一个目标温度，避免单路传感器噪声直接驱动风扇。</p>
+        <span class="step-tech">weighted / max / cpu / gpu</span>
+      </article>
+      <article class="step reveal">
+        <span class="step-no">03</span>
+        <h3>曲线插值</h3>
+        <p>在 5 点曲线上线性插值出目标转速；2°C 滞回与 30 秒心跳避免频繁写 EC。</p>
+        <span class="step-tech">InterpolateCurve</span>
+      </article>
+      <article class="step reveal">
+        <span class="step-no">04</span>
+        <h3>写入 EC</h3>
+        <p>通过 ec-probe 写风扇寄存器 0x2C/0x2D，并读取 0xB0–0xB3 获取实际 RPM。</p>
+        <span class="step-tech">ec-probe.exe</span>
+      </article>
+    </div>
+    <div class="callout reveal">
+      <div class="callout-icon"><svg aria-hidden="true"><use href="#i-shield"/></svg></div>
+      <div>
+        <h3>安全兜底：宁可交还固件，也不赌旧数据</h3>
+        <p>自动模式在拿到首个有效温度前不接管 EC。连续 3 个周期没有任何有效温度时，程序写入 <code>0xFF</code> 释放风扇控制权并触发托盘告警；温度恢复后自动重新接管。写失败不会记为“已提交”，下一周期会继续重试。</p>
+      </div>
+    </div>
+    <p class="loop-note">默认每 1 秒采样，6 次采样为一个决策周期；一次写入同时作用于 Fan1/Fan2。</p>
+  </section>
+
+  <section id="install" class="section wrap">
+    <div class="section-head">
+      <div class="eyebrow">安装</div>
+      <h2>下载，双击，打开浏览器</h2>
+      <p>安装包会请求管理员权限，把程序放到 Program Files，并创建桌面/开始菜单快捷方式。也可以使用便携版 ZIP。</p>
+    </div>
+    <div class="install-grid">
+      <article class="install-card primary reveal">
+        <span class="tag">推荐</span>
+        <h3>Windows 安装包</h3>
+        <p>单文件 <code>ECC-Setup-*.exe</code>，向导式安装，自动注册卸载项。</p>
+        <a class="btn btn-primary" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-download"/></svg> 前往 Releases 下载
+        </a>
+        <ul>
+          <li>Windows 10 / 11 x64</li>
+          <li>安装与运行需要管理员权限</li>
+          <li>从「设置 → 应用」卸载</li>
+        </ul>
+      </article>
+      <article class="install-card reveal">
+        <h3>便携版 ZIP</h3>
+        <p>解压后运行 <code>install.ps1</code>，或直接双击 <code>ecc.exe</code>；适合调试与绿色使用。</p>
+        <a class="btn btn-ghost" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">下载便携版</a>
+        <ul>
+          <li>必须保留同目录 <code>assets/</code></li>
+          <li>同样需要管理员权限</li>
+          <li>可用 <code>uninstall.ps1</code> 卸载</li>
+        </ul>
+      </article>
+    </div>
+    <div class="steps-mini">
+      <span>① 下载</span><span>→</span><span>② 双击安装</span><span>→</span><span>③ 浏览器打开 127.0.0.1:8765</span>
+    </div>
+  </section>
+
+  <section id="safety" class="section wrap">
+    <div class="warning-card reveal">
+      <div class="warning-icon">!</div>
+      <div>
+        <h2>写 EC 有风险，请先确认你的机型</h2>
+        <p>EC 寄存器地址因笔记本型号而异。本项目在目标机型上验证了风扇寄存器 <code>0x2C / 0x2D</code> 与 RPM 寄存器 <code>0xB0–0xB3</code>；其他机型可能无效，甚至误触其他 EC 功能。</p>
+        <p>未知机型请先用 <code>--dry-run</code> 或 <code>--simulate</code> 验证，并用管理员 PowerShell 执行 <code>ec-probe read 0x2C</code> 回读确认。完整探测方法见 README 的硬件兼容性章节。</p>
+        <a class="link-arrow" href="https://github.com/buglyz/ecc/blob/main/README.md" target="_blank" rel="noopener">查看硬件兼容性说明 →</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="security" class="section wrap">
+    <div class="section-head">
+      <div class="eyebrow">开放与安全</div>
+      <h2>本地优先，源码可审计</h2>
+      <p>程序不依赖云服务，也不收集遥测。控制台只绑定回环地址，所有写接口都经过令牌与 Host 校验。</p>
+    </div>
+    <div class="security-grid">
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-code"/></svg></div>
+        <h3>MIT 开源</h3>
+        <p>主程序使用 MIT 许可证，源码、构建脚本与发布流程全部公开。第三方组件遵循各自许可证。</p>
+        <a class="link-arrow" href="https://github.com/buglyz/ecc/blob/main/LICENSE" target="_blank" rel="noopener">查看 LICENSE →</a>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-lock"/></svg></div>
+        <h3>本地 API 防护</h3>
+        <p>写接口需要页面注入的会话令牌，Host 白名单只接受回环地址，并附带防点击劫持响应头。</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-shield"/></svg></div>
+        <h3>发布校验</h3>
+        <p>每个 Release 附带 <code>SHA256SUMS.txt</code>，下载后可自行校验安装包与便携版完整性。</p>
+        <a class="link-arrow" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">前往 Releases →</a>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg aria-hidden="true"><use href="#i-check"/></svg></div>
+        <h3>代码签名（申请中）</h3>
+        <p>正在申请 SignPath Foundation 的免费开源代码签名。签名上线后，Release 二进制将由 SignPath Foundation 背书。</p>
+        <a class="link-arrow" href="https://signpath.org/" target="_blank" rel="noopener">了解 SignPath Foundation →</a>
+      </article>
+    </div>
+  </section>
+
+  <section id="faq" class="section wrap">
+    <div class="section-head">
+      <div class="eyebrow">常见问题</div>
+      <h2>动手之前，先看这几条</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>会把温度数据上传到云端吗？</summary>
+        <p>不会。所有温度、转速和配置只在你的电脑上处理。配置文件与日志位于 <code>%LOCALAPPDATA%\FanController</code>。</p>
+      </details>
+      <details>
+        <summary>为什么需要管理员权限？</summary>
+        <p>访问 EC 寄存器需要加载 WinRing0 驱动，由 <code>ec-probe.exe</code> 完成读写；没有管理员权限就无法操作硬件。</p>
+      </details>
+      <details>
+        <summary>自定义目录安装后，开机自启会弹 UAC 吗？</summary>
+        <p>会。安装在 Program Files 内时使用最高权限计划任务，登录免 UAC；其他目录使用普通权限计划任务，登录时由程序请求一次 UAC。这样既支持自定义目录，也避免最高权限任务指向用户可写路径。</p>
+      </details>
+      <details>
+        <summary>换一台笔记本能用吗？</summary>
+        <p>不一定。风扇与 RPM 寄存器地址因机型而异，本项目只在目标机型上验证通过。未知机型请先用 <code>--dry-run</code> / <code>--simulate</code>，并参考 README 的探测方法确认寄存器。</p>
+      </details>
+      <details>
+        <summary>安装包会触发 SmartScreen 吗？</summary>
+        <p>当前发布包尚未代码签名，首次运行可能出现提示。我们正在申请 SignPath Foundation 的免费开源签名；在此之前，可以用 <code>SHA256SUMS.txt</code> 校验文件完整性。</p>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div>
+      <a class="brand" href="#top">
+        <span class="brand-mark"><svg aria-hidden="true"><use href="#i-fan"/></svg></span>
+        <span class="brand-text">ECC<span>Fan Controller</span></span>
+      </a>
+      <p>开源的 Windows 笔记本风扇控制器。<br>与任何笔记本厂商无隶属关系。写 EC 有风险，请自行确认机型与寄存器。</p>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/buglyz/ecc" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/buglyz/ecc/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/buglyz/ecc/issues" target="_blank" rel="noopener">Issues</a>
+      <a href="https://github.com/buglyz/ecc/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      <a href="https://github.com/buglyz/ecc/blob/main/docs/audit/2026-08-01-security-review.md" target="_blank" rel="noopener">安全审计</a>
+      <a href="https://signpath.org/" target="_blank" rel="noopener">SignPath Foundation</a>
+    </div>
+    <p class="copyright">© <span id="year">2026</span> buglyz · ECC Fan Controller · Built with Go.</p>
+  </div>
+</footer>
+
+<script src="assets/site.js" defer></script>
+</body>
+</html>
