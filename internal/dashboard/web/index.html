@@ -320,7 +320,7 @@ document.addEventListener('change',e=>{if(['strategy','manualEnabled','manualSpe
 $('manualSpeed').addEventListener('input',()=>{$('manualValue').textContent=$('manualSpeed').value+' %'});
 $('manualEnabled').addEventListener('change',()=>{$('manualSpeed').disabled=!$('manualEnabled').checked});
 $('theme').onclick=()=>{document.body.classList.toggle('dark');dirty=true;save({theme:document.body.classList.contains('dark')?'dark':'light'}).catch(err=>{saving=false;console.error(err)})};
-$('startup').onclick=async()=>{if(!state)return;try{await api('/api/startup',{enabled:!state.startup});notify('开机自启动设置已更新');refresh()}catch(e){actionError('更新开机自启动',e)}};
+$('startup').onclick=async()=>{if(!state)return;try{const r=await api('/api/startup',{enabled:!state.startup});notify(r.startup&&!r.elevated?'已添加开机自启动；登录时会请求管理员权限（UAC）':'开机自启动设置已更新');refresh()}catch(e){actionError('更新开机自启动',e)}};
 $('addPreset').onclick=()=>{const name=(prompt('新挡位名称：','自定义挡位')||'').trim();if(!name)return;presetAct('add',name)};
 document.querySelectorAll('#rangeChips [data-min]').forEach(b=>b.onclick=()=>{$('minutes').value=b.dataset.min;dirty=true;syncRangeChips();save().catch(err=>{saving=false;console.error(err)})});
 const cc=$('curveCanvas');if(cc){cc.addEventListener('pointerdown',e=>{cc.setPointerCapture(e.pointerId);onCurveDown(e)});cc.addEventListener('pointermove',onCurveMove);cc.addEventListener('pointerup',onCurveUp);cc.addEventListener('pointercancel',onCurveUp)}

@@ -221,7 +221,9 @@ func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
 	}
 	enabled := s.startup.IsEnabled(startup.Identifier)
 	s.startupCached.Store(enabled)
-	s.writeJSON(w, map[string]any{"ok": true, "startup": enabled})
+	// elevated=false 表示目标不在 Program Files，计划任务以 LIMITED 运行，
+	// 登录时由程序自行请求 UAC。
+	s.writeJSON(w, map[string]any{"ok": true, "startup": enabled, "elevated": startup.RequiresElevation(s.paths.StartupTarget)})
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
