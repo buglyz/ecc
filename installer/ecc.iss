@@ -41,7 +41,7 @@ CloseApplications=no
 SetupLogging=yes
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+Name: "chinesesimplified"; MessagesFile: "{#SourceRoot}\installer\languages\ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"
@@ -62,7 +62,7 @@ Filename: "{app}\{#AppExeName}"; Description: "立即启动 {#AppName}"; Flags: 
 const
   EVENT_MODIFY_STATE = $0002;
 
-function EccOpenEventW(dwDesiredAccess: DWORD; bInheritHandle: BOOL; lpName: PChar): THandle;
+function EccOpenEventW(dwDesiredAccess: DWORD; bInheritHandle: BOOL; lpName: String): THandle;
   external 'OpenEventW@kernel32.dll stdcall';
 function EccSetEvent(hEvent: THandle): BOOL;
   external 'SetEvent@kernel32.dll stdcall';

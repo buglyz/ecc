@@ -19,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.26.5'
+          go-version: '1.27.3'
           cache: false
 
       - name: Vet
@@ -52,17 +52,24 @@ jobs:
           & $iscc '/DAppVersion=dev' "/DSourceRoot=$root" "/O$dist" 'installer\ecc.iss'
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup 编译失败' }
 
-      - name: Package Artifact
+      - name: Package Portable
         run: |
-          New-Item -ItemType Directory -Force -Path dist
-          Copy-Item -Path ecc.exe -Destination dist/
-          Copy-Item -Path assets -Destination dist/ -Recurse
-          Copy-Item -Path install.ps1 -Destination dist/
-          Copy-Item -Path uninstall.ps1 -Destination dist/
-          Copy-Item -Path README.md -Destination dist/
+          New-Item -ItemType Directory -Force -Path portable
+          Copy-Item -Path ecc.exe -Destination portable/
+          Copy-Item -Path assets -Destination portable/ -Recurse
+          Copy-Item -Path install.ps1 -Destination portable/
+          Copy-Item -Path uninstall.ps1 -Destination portable/
+          Copy-Item -Path README.md -Destination portable/
+          Compress-Archive -Path portable/* -DestinationPath ecc-dev-windows-amd64.zip -Force
 
-      - name: Upload Artifact
+      - name: Upload Installer
         uses: actions/upload-artifact@v7
         with:
-          name: ecc-windows-amd64
-          path: dist/
+          name: ecc-installer-windows-amd64
+          path: dist/ECC-Setup-dev.exe
+
+      - name: Upload Portable
+        uses: actions/upload-artifact@v7
+        with:
+          name: ecc-portable-windows-amd64
+          path: ecc-dev-windows-amd64.zip
