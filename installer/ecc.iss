@@ -62,7 +62,7 @@ Filename: "{app}\{#AppExeName}"; Description: "立即启动 {#AppName}"; Flags: 
 const
   EVENT_MODIFY_STATE = $0002;
 
-function EccOpenEventW(dwDesiredAccess: DWORD; bInheritHandle: BOOL; lpName: PChar): THandle;
+function EccOpenEventW(dwDesiredAccess: DWORD; bInheritHandle: BOOL; lpName: String): THandle;
   external 'OpenEventW@kernel32.dll stdcall';
 function EccSetEvent(hEvent: THandle): BOOL;
   external 'SetEvent@kernel32.dll stdcall';
