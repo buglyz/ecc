@@ -63,7 +63,7 @@ if (-not $InstallPath.StartsWith($programFilesPrefix, [System.StringComparison]:
 Set-Location -LiteralPath (Split-Path -Parent $MyInvocation.MyCommand.Path) | Out-Null
 
 # 检查必需文件
-$requiredFiles = @("ecc.exe", "assets/pawnio/LpcACPIEC.bin", "assets/GmwmiCli.exe", "assets/LibreHardwareMonitorLib.dll")
+$requiredFiles = @("ecc.exe", "assets/pawnio/LpcACPIEC.bin", "assets/pawnio/PawnIO_setup.exe", "assets/GmwmiCli.exe", "assets/LibreHardwareMonitorLib.dll")
 $missing = @()
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path $file)) {
@@ -133,9 +133,20 @@ Write-Host ""
 
 $pawnService = Get-Service PawnIO -ErrorAction SilentlyContinue
 if (-not $pawnService) {
-    Write-Host "提示: 未检测到 PawnIO 服务。" -ForegroundColor Yellow
+    $pawnSetup = Join-Path $InstallPath 'assets\pawnio\PawnIO_setup.exe'
+    if (Test-Path $pawnSetup) {
+        Write-Host "正在安装 PawnIO 驱动..." -ForegroundColor Green
+        $pawnProc = Start-Process -FilePath $pawnSetup -ArgumentList '-install', '-silent' -Wait -PassThru -WindowStyle Hidden
+        if ($pawnProc.ExitCode -ne 0) {
+            Write-Host "PawnIO 安装返回代码 $($pawnProc.ExitCode)。" -ForegroundColor Yellow
+        }
+        $pawnService = Get-Service PawnIO -ErrorAction SilentlyContinue
+    }
+}
+if (-not $pawnService) {
+    Write-Host "提示: PawnIO 未安装或安装失败。" -ForegroundColor Yellow
     Write-Host "      风扇写入需要 PawnIO 2.x（微软 WHCP 签名的端口 I/O 驱动）。" -ForegroundColor White
-    Write-Host "      安装命令: winget install namazso.PawnIO" -ForegroundColor White
+    Write-Host "      可手动运行: $InstallPath\assets\pawnio\PawnIO_setup.exe -install -silent" -ForegroundColor White
     Write-Host "      未安装时会自动回退到 ec-probe/WinRing0（如果 assets 中存在）。" -ForegroundColor White
     Write-Host ""
 }

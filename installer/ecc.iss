@@ -62,6 +62,31 @@ Filename: "{app}\{#AppExeName}"; Description: "立即启动 {#AppName}"; Flags: 
 const
   EVENT_MODIFY_STATE = $0002;
 
+// PawnIO 是默认 EC 后端。安装包内带有官方 2.2.0 安装器，已安装时跳过。
+function NeedsPawnIO: Boolean;
+begin
+  Result := not RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\PawnIO');
+end;
+
+procedure InstallPawnIO;
+var
+  ResultCode: Integer;
+  SetupPath: String;
+begin
+  if not NeedsPawnIO then
+    exit;
+  SetupPath := ExpandConstant('{app}\assets\pawnio\PawnIO_setup.exe');
+  if not FileExists(SetupPath) then
+  begin
+    MsgBox('安装包缺少 PawnIO 安装器：' + SetupPath, mbError, MB_OK);
+    exit;
+  end;
+  if not Exec(SetupPath, '-install -silent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    MsgBox('无法启动 PawnIO 安装器。ECC 将回退到 ec-probe。', mbInformation, MB_OK)
+  else if ResultCode <> 0 then
+    MsgBox('PawnIO 安装返回代码 ' + IntToStr(ResultCode) + '。ECC 将回退到 ec-probe。', mbInformation, MB_OK);
+end;
+
 function EccOpenEventW(dwDesiredAccess: DWORD; bInheritHandle: BOOL; lpName: String): THandle;
   external 'OpenEventW@kernel32.dll stdcall';
 function EccSetEvent(hEvent: THandle): BOOL;
@@ -157,7 +182,10 @@ begin
   if CurStep = ssInstall then
     StopRunningInstance
   else if CurStep = ssPostInstall then
+  begin
     MigrateScheduledTask;
+    InstallPawnIO;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

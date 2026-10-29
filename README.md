@@ -51,12 +51,13 @@
 
 - Windows 10 / 11（x64）
 - 管理员权限（访问 EC 寄存器需要内核驱动）
-- **PawnIO 2.x**（默认 EC 后端，微软 WHCP 签名，兼容 HVCI）：`winget install namazso.PawnIO`
+- **PawnIO 2.x**（默认 EC 后端，微软 WHCP 签名，兼容 HVCI）。安装包会自动安装；也可手动执行 `winget install namazso.PawnIO`。
 - `ecc.exe` 同目录下的 `assets/` 需包含以下随包分发的文件：
 
   | 文件 | 作用 |
   |------|------|
   | `assets/pawnio/LpcACPIEC.bin` | PawnIO 的 ACPI EC 模块（LGPL-2.1，默认后端） |
+  | `assets/pawnio/PawnIO_setup.exe` | 官方 PawnIO 2.2.0 安装器（GPL-2.0，安装时自动运行） |
   | `GmwmiCli.exe` | 只读温度/RPM 的 WMI 薄封装 |
   | `LibreHardwareMonitorLib.dll` | 读取 CPU/GPU 温度 |
 
@@ -67,16 +68,20 @@
   | `ec-probe.exe` | NBFC 的 EC 读写工具（回退） |
   | `nbfc.exe` / `StagWare.*` / `Plugins/` | NBFC 依赖（回退路径不使用） |
 
+> PawnIO 由 namazso 提供，驱动本体为 GPL-2.0；安装器按其声明原样分发。来源、哈希与许可见 `assets/pawnio/NOTICE.md`。
+
 ### 安装与使用
 
 **方式一：安装包（推荐）**
 
 1. 从 [Releases](https://github.com/buglyz/ecc/releases) 下载 `ECC-Setup-<版本>.exe`。
 2. 双击运行，按向导完成安装（自动请求管理员权限，默认安装到 `%ProgramFiles%\ECC`）。
-3. 安装完成后从桌面或开始菜单启动，系统托盘出现图标，浏览器自动打开控制台 `http://127.0.0.1:8765`。
-4. 在控制台中调整风扇曲线、切换预设、设置开机自启动。
+3. 安装器会检测 PawnIO；未安装时自动运行 `PawnIO_setup.exe -install -silent`（已安装则跳过）。
+4. 安装完成后从桌面或开始菜单启动，系统托盘出现图标，浏览器自动打开控制台 `http://127.0.0.1:8765`。
+5. 在控制台中调整风扇曲线、切换预设、设置开机自启动。
 
 > 卸载：Windows「设置 → 应用 → 已安装的应用」中卸载 ECC Fan Controller。
+> ECC 不会自动卸载 PawnIO，因为它可能被其他程序共享使用。
 
 **方式二：便携版 ZIP**
 
