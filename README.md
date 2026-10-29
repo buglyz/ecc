@@ -4,6 +4,10 @@
 
 笔记本 EC（Embedded Controller）风扇控制器：通过写入 EC 寄存器实现自定义风扇转速曲线，搭载现代化玻璃态 Web UI。纯 Go 标准库实现，单文件运行，无外部运行时依赖。
 
+> **QNLXS / SQ131 分支**：风扇写入默认通过 **PawnIO**（微软 WHCP 签名、兼容 HVCI）+ `LpcACPIEC.bin` 直接读写 EC `0x2C/0x2D`；温度/RPM 通过 `GmwmiCli.exe` 只读。**不需要关闭内存完整性**。`ec-probe`/WinRing0 仅作为回退路径。
+>
+> 本分支已在 Hasee QNLXS（i7-12650H + RTX 4060，BIOS SQ131）上完成只读验证与 100% 受控写入验证：`0x2C/0x2D` 为占空比上限，`0x2E/0x2F` 为 EC 实际占空比，`0x58` 为 CPU 温度。
+
 > 由[此 B 站项目](https://www.bilibili.com/video/BV1oaaoeFEzY/?share_source=copy_web&vd_source=02adb0cd5f8f9003d535f030aa4f3266)修改而来。
 
 > 项目主页：[buglyz.github.io/ecc](https://buglyz.github.io/ecc/) · 下载最新版：[Releases](https://github.com/buglyz/ecc/releases/latest)
@@ -31,9 +35,12 @@
 - 📈 **双轨制曲线编辑器** — 画布上拖拽控制点，或在表格中精确键入温度/转速，双向实时同步。
 - 📊 **实时监控图表** — CPU/GPU 温度与风扇响应趋势，回溯范围 1–480 分钟可调。
 - ⚙️ **多模式调速** — 自动模式支持加权 / 取最大值 / 仅 CPU / 仅 GPU 四种温度策略；手动模式一键锁定绝对转速。
+- 🌡️ **目标温度模式** — 比例律 + 死区 + 速率限制，自动调整 EC 上限来维持目标温度；与曲线模式可随时切换。
 - 🕹️ **场景预设** — 内置 静音 / 平衡 / 性能 三挡，支持创建、修改、保存个人挡位。
 - 🚀 **系统级集成** — 动态托盘图标、开机自启动（Program Files 安装免 UAC；其他目录以当前用户权限启动，登录时请求 UAC）、启动自动提权。
 - 🧭 **重复启动保护** — 与端口无关的全局命名互斥体；已有实例运行时直接打开现有控制台，不启动第二套硬件控制循环。
+- 🐕 **独立看门狗** — 分离进程监控心跳；主进程被强杀/崩溃时，超时后自动把 EC 上限写回 `FF/FF`。
+- 🤝 **原厂所有权仲裁** — 监听 `FanControlStatus`；原厂 ControlCenter 重新启用风扇控制时，ECC 主动退出并释放。
 - 💬 **可见操作反馈** — 配置、预设和开机自启动的成功或失败会在页面内明确提示。
 - 🔒 **API 防护** — 写接口校验页面注入的会话令牌与回环 Host，拒绝 CSRF / DNS rebinding 篡改风扇配置。
 - 🛡️ **健壮性** — 温度传感器掉线指数退避重启、EC 写入失败托盘告警、配置损坏自动备份恢复。
@@ -43,16 +50,22 @@
 ### 运行要求
 
 - Windows 10 / 11（x64）
-- 管理员权限（访问 EC 寄存器需加载内核驱动）
+- 管理员权限（访问 EC 寄存器需要内核驱动）
+- **PawnIO 2.x**（默认 EC 后端，微软 WHCP 签名，兼容 HVCI）：`winget install namazso.PawnIO`
 - `ecc.exe` 同目录下的 `assets/` 需包含以下随包分发的文件：
 
   | 文件 | 作用 |
   |------|------|
-  | `ec-probe.exe` | NBFC 的 EC 读写工具（核心） |
+  | `assets/pawnio/LpcACPIEC.bin` | PawnIO 的 ACPI EC 模块（LGPL-2.1，默认后端） |
+  | `GmwmiCli.exe` | 只读温度/RPM 的 WMI 薄封装 |
   | `LibreHardwareMonitorLib.dll` | 读取 CPU/GPU 温度 |
-  | `nbfc.exe` | NBFC 主程序 |
-  | `StagWare.FanControl.dll` / `NLog.dll` / `clipr.dll` | NBFC 依赖库 |
-  | `Plugins/` | NBFC 硬件插件 |
+
+  以下文件仅在回退到 WinRing0 路径时需要，保留可兼容旧环境：
+
+  | 文件 | 作用 |
+  |------|------|
+  | `ec-probe.exe` | NBFC 的 EC 读写工具（回退） |
+  | `nbfc.exe` / `StagWare.*` / `Plugins/` | NBFC 依赖（回退路径不使用） |
 
 ### 安装与使用
 
@@ -81,6 +94,7 @@
 | `--interval` | `1000` | 正整数采样间隔（毫秒） |
 | `--dry-run` | 关 | 仅记录 EC 写入，不操作硬件 |
 | `--simulate` | 关 | 使用模拟温度数据（同时启用 dry-run） |
+| `--no-pawnio` | 关 | 禁用 PawnIO，强制使用 ec-probe/WinRing0 回退 |
 | `--skip-admin` | 关 | 跳过管理员权限检查 |
 | `--no-tray` | 关 | 禁用系统托盘图标 |
 | `--no-browser` | 关 | 启动时不自动打开浏览器 |
@@ -145,6 +159,32 @@
 
 结果经 `ClampSpeed` 限幅到 `[0, 100]` 并四舍五入为整数百分比。
 
+### 3.1 目标温度模式（可选，`internal/controller/target.go`）
+
+除了固定曲线，还可以选择「目标温度模式」。它不再查表，而是用温度误差直接计算 EC 上限。目标温度基于当前「温度策略」合并后的平均温度（默认加权 0.7·CPU + 0.3·GPU）：
+
+```text
+desired = Bias + KP × (avg - Target)
+desired = clamp(desired, Min, Max)
+
+if |avg - Target| <= Hysteresis: 保持当前上限
+if desired > current: 最多上调 UpStep
+if desired < current: 最多下调 DownStep
+```
+
+默认值：
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `Target` | 66°C | 想维持的温度 |
+| `Hysteresis` | 4°C | 死区；2°C 偏紧，容易在 EC 斜坡上振荡 |
+| `KP` | 5 | 每偏离 1°C 调整多少上限 |
+| `Bias` | 55 | 误差为 0 时的基准上限 |
+| `Min` / `Max` | 40 / 100 | 比例律的输出范围 |
+| `UpStep` / `DownStep` | +30 / -10 | 每周期速率限制：放开快、收紧慢 |
+
+注意：`0x2C/0x2D` 是**上限**，因此目标温度模式只能把风扇压到 EC 原厂曲线以下，不能把风扇推到原厂曲线以上。高温硬保护仍然优先：CPU≥92°C 或 GPU≥87°C 时自动模式直接放到 100%。
+
 ### 4. 何时才真正写 EC —— 滞回、漂移、心跳（`internal/controller/controller.go`）
 
 算出目标转速后**并不是每周期都写**，写入受多重条件门控，以减少无谓的 EC 操作与风扇转速抖动：
@@ -157,9 +197,33 @@
 
 只有「目标转速变了 **或** 漂移 **或** 心跳到期 **或** 配置变化」时才调用写入。
 
-### 5. 写入 EC 寄存器（`internal/ec/writer.go`）
+### 5. 写入 EC 寄存器
 
-这是**真正控制风扇的一步**。程序不自己碰内核，而是调用 NBFC 的 `ec-probe.exe`：
+#### 5.0 默认后端：PawnIO（`internal/pawnio`）
+
+默认路径不调用 `ec-probe.exe`，而是通过 PawnIO 的 `LpcACPIEC.bin` 模块直接做 ACPI EC 端口 I/O：
+
+```
+ecc.exe → PawnIO 设备 (\\.\GLOBALROOT\Device\PawnIO)
+        → ioctl_pio_read/write(0x66/0x62)
+        → EC 0x2C / 0x2D
+```
+
+| 寄存器 | 含义 | 说明 |
+|--------|------|------|
+| `0x2C` / `0x2D` | CPU/GPU 占空比**上限** | `0x00`–`0x64` 有效；`0xFF` = 跟随 EC 原厂曲线 |
+| `0x2E` / `0x2F` | EC **实际**占空比 | 只读，EC 以约 10 秒斜坡逼近上限 |
+| `0x58` | CPU 温度 | 摄氏度 |
+| `0x59` | 另一路温度 | 摄氏度 |
+
+- 模块哈希固定为 `c38fd116…f7906`，不匹配会拒绝加载。
+- 需要 PawnIO 服务运行；程序会在打开设备失败时尝试 `sc start PawnIO`。
+- 每次写入后回读校验；失败返回 false，由控制循环重试/告警。
+- 退出、异常、连续无温度时写 `0xFF/0xFF`，交还 EC 自动曲线。
+
+#### 5.1 回退后端：ec-probe / WinRing0（`internal/ec/writer.go`）
+
+以下 5.1–5.5 描述的是 `--no-pawnio` 或 PawnIO 不可用时的回退路径。程序调用 NBFC 的 `ec-probe.exe`：
 
 ```
 ec-probe.exe write -v 0x2C 0x32
@@ -269,15 +333,21 @@ EC 固件
 
 ## ⚠️ 硬件兼容性
 
-**风扇控制**（写 EC 寄存器 `0x2C` / `0x2D`）：
-- ✅ 本项目目标机型已验证：写入立即生效，可用管理员 PowerShell 通过 `ec-probe read` 回读确认。
-- ⚠️ EC 寄存器地址因机型而异。换其他笔记本需自行逆向探测正确地址（见 [5.2](#52-本程序使用的寄存器地址)），否则写入无效甚至误触其他功能。
-- ⚠️ 部分机型寄存器只写不可回读，程序对此已兼容（不依赖回读判定成功）。
+**已验证机型**：
+
+- Hasee QNLXS（神舟战神 S8D6 同主板），i7-12650H + RTX 4060 Laptop（`VEN_10DE&DEV_28A0`）。
+- 本分支在 BIOS **SQ131** 上完成 PawnIO 只读验证与 100% 受控写入验证。
+- 参考项目 `hasee-s8d6-ec-fan-control` 在 BIOS **SP122** 上验证了同一 EC 地图。
+
+**风扇控制**（EC `0x2C/0x2D`，PawnIO 默认）：
+- ✅ `0x2C/0x2D` 是占空比**上限**，不是直接 PWM；`0x2E/0x2F` 是 EC 实际占空比。
+- ✅ 写入 `0x00–0x64` 有效；`0xFF` 交还 EC 原厂曲线；`0x65–0xFE` 会被 EC 钳到 100。
+- ⚠️ 其他机型/EC 固件的寄存器布局可能不同。程序带 PawnIO 模块哈希校验，但不会替代机型逆向验证；未知机型请先只读探测。
+- ⚠️ 回退路径 `ec-probe`/WinRing0 仍保留，可用 `--no-pawnio` 强制启用。
 
 **风扇转速反馈（RPM）**：
-- ✅ **本项目目标机型已验证**：读 EC 寄存器 `0xB0`/`0xB1`（Fan1）、`0xB2`/`0xB3`（Fan2），小端 16 位。强制 0%→100% 时读数从 ~0 跳到 ~3800，空闲态 ~5000 rpm，与机器自带控制台一致。
-- ⚠️ RPM 寄存器地址同样因机型而异。换机型需重新用满速/停转 dump 对比法定位（见 [5.2](#52-本程序使用的寄存器地址)）。
-- ℹ️ RPM 读取不可用（读到 0 或驱动未加载）时程序自动优雅降级（UI 不显示 RPM），不影响调速功能。
+- ✅ 通过 `GmwmiCli.exe` 读取 `root\wmi:RW_GMWMI` 的 `0xFA00/0x0200`：`a4/a5` 为 CPU/GPU RPM。
+- ℹ️ GMWMI 不可用时（缺少 helper 或查询失败）UI 不显示 RPM，不影响调速。
 
 ## 🛠 从源码编译
 
@@ -285,9 +355,10 @@ EC 固件
 go build -ldflags="-s -w -H windowsgui" -o ecc.exe ./cmd/fan-controller/
 ```
 
-- 无外部依赖，纯 Go 标准库 + 少量系统调用封装。
+- 无外部 Go 依赖，纯标准库 + 少量系统调用封装。
 - `-H windowsgui` 让程序以 GUI 子系统启动（不弹控制台窗口）。
-- 编译后需把 `assets/` 目录放到 `ecc.exe` 同级。
+- 编译后需把 `assets/` 目录（含 `pawnio/LpcACPIEC.bin`、`GmwmiCli.exe`、`LibreHardwareMonitorLib.dll`）放到 `ecc.exe` 同级。
+- `GmwmiCli.exe` 可用 `tools/gmwmi-cli/build.ps1` 重新编译（使用系统自带 .NET Framework csc）。
 
 ## 📂 项目结构
 
@@ -298,7 +369,10 @@ internal/
   config/               配置加载/保存/归一化（JSON + pickle 兼容），损坏自动备份
   controller/           风扇控制循环核心逻辑（采样/策略/插值/滞回/心跳）
   dashboard/            Web 控制台（HTTP API + go:embed 前端）
-  ec/                   EC 寄存器读写（调用 ec-probe.exe）
+  ec/                   EC 寄存器读写回退（调用 ec-probe.exe）
+  gmwmi/                RW_GMWMI 只读温度/RPM（调用 GmwmiCli.exe）
+  nl5/                  原厂 ControlCenter 注册表状态（所有权仲裁）
+  pawnio/               PawnIO EC 后端（默认，端口 0x62/0x66）
   logging/              日志轮转
   paths/                运行时路径发现
   process/              Windows 隐藏窗口进程属性
@@ -312,11 +386,12 @@ site/                   GitHub Pages 项目主页（静态 HTML）
 
 | 现象 | 可能原因与排查 |
 |------|--------------|
-| 风扇转速不变 | 驱动未加载或寄存器地址不对。管理员 PowerShell 跑 `ec-probe read 0x2C`；若报 `unable to load the winring0 driver` 则驱动问题，若读值不随写入变化则地址不匹配本机型。 |
+| 风扇转速不变（PawnIO） | PawnIO 服务未运行、模块哈希不符或设备打不开。管理员执行 `sc query PawnIO`；确认 `assets/pawnio/LpcACPIEC.bin`；必要时 `winget install namazso.PawnIO`。日志会记录具体错误。 |
+| 风扇转速不变（ec-probe 回退） | WinRing0 未加载或寄存器地址不对。管理员跑 `ec-probe read 0x2C`；若报 `unable to load the winring0 driver` 则驱动问题，若读值不随写入变化则地址不匹配本机型。 |
 | 启动即退出 | 缺少管理员权限或 `assets/` 文件不全。查看日志 `%LOCALAPPDATA%\FanController\fan_controller.log`。 |
 | 无法启用开机自启 | 检查计划任务权限与同名任务冲突。安装在 Program Files 外时会使用普通权限计划任务，登录时需确认一次 UAC，这是预期行为。 |
 | UI 显示温度为空 | LHM/PowerShell 桥接失败。日志会记录退避重启信息；确认 `LibreHardwareMonitorLib.dll` 存在。 |
-| UI 不显示 RPM | 驱动未加载或本机型 RPM 寄存器地址不同（本项目为 `0xB0`–`0xB3`）。属优雅降级，不影响调速。 |
+| UI 不显示 RPM | `GmwmiCli.exe` 缺失或 `RW_GMWMI` 查询失败。确认 `assets/GmwmiCli.exe` 存在；属优雅降级，不影响调速。 |
 | 托盘图标闪红 | EC 写入失败告警，通常是驱动未加载，见第一行。 |
 | 配置丢失/重置 | 配置文件曾损坏并被备份为 `config.json.corrupted.<时间戳>`，可在状态目录找回。 |
 

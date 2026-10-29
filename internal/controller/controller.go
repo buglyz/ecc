@@ -19,6 +19,8 @@ type FanController struct {
 	mu             sync.RWMutex
 	curve          []Point
 	strategy       string
+	controlMode    string
+	target         TargetConfig
 	manualSpeed    *int
 	version        uint64
 	latest         Latest
@@ -42,6 +44,8 @@ type FanController struct {
 type modeState struct {
 	manualSpeed *int
 	strategy    string
+	controlMode string
+	target      TargetConfig
 	curve       []Point
 	version     uint64
 }
@@ -65,6 +69,8 @@ func NewFanControllerWithRPM(reader SensorReader, writer FanWriter, fanReader Fa
 		logger:       logger,
 		curve:        append([]Point(nil), curve...),
 		strategy:     strategy,
+		controlMode:  ControlModeCurve,
+		target:       DefaultTargetConfig(),
 		pollInterval: pollInterval,
 		history:      NewHistory(HistoryMaxSamples),
 		nudge:        make(chan struct{}, 1),
@@ -93,6 +99,29 @@ func (c *FanController) SetStrategy(strategy string) {
 	c.version++
 	c.mu.Unlock()
 	c.logger.Printf("控制器策略已更新: strategy=%s", strategy)
+	c.kick()
+}
+
+func (c *FanController) SetControlMode(mode string) {
+	if !ValidControlMode(mode) {
+		mode = ControlModeCurve
+	}
+	c.mu.Lock()
+	c.controlMode = mode
+	c.version++
+	c.mu.Unlock()
+	c.logger.Printf("控制器模式已更新: mode=%s", mode)
+	c.kick()
+}
+
+func (c *FanController) SetTargetConfig(t TargetConfig) {
+	t = NormalizeTargetConfig(t)
+	c.mu.Lock()
+	c.target = t
+	c.version++
+	c.mu.Unlock()
+	c.logger.Printf("目标温度配置已更新: target=%.1f hysteresis=%.1f kp=%.1f bias=%d range=%d-%d step=+%d/-%d",
+		t.Temp, t.Hysteresis, t.KP, t.Bias, t.Min, t.Max, t.UpStep, t.DownStep)
 	c.kick()
 }
 
@@ -159,7 +188,13 @@ func (c *FanController) Stop() {
 func (c *FanController) currentMode() modeState {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	state := modeState{strategy: c.strategy, curve: append([]Point(nil), c.curve...), version: c.version}
+	state := modeState{
+		strategy:    c.strategy,
+		controlMode: c.controlMode,
+		target:      c.target,
+		curve:       append([]Point(nil), c.curve...),
+		version:     c.version,
+	}
 	if c.manualSpeed != nil {
 		v := *c.manualSpeed
 		state.manualSpeed = &v
@@ -212,6 +247,9 @@ func initialSpeed(state modeState) int {
 func modeName(state modeState) string {
 	if state.manualSpeed != nil {
 		return "manual"
+	}
+	if state.controlMode == ControlModeTarget {
+		return "target"
 	}
 	return "auto:" + state.strategy
 }

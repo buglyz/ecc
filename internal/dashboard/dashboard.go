@@ -144,6 +144,8 @@ func (s *Server) configSnapshot() config.Config {
 func (s *Server) applyControllerConfig(cfg config.Config) {
 	s.controller.SetCurve(cfg.Curve)
 	s.controller.SetStrategy(cfg.Strategy)
+	s.controller.SetControlMode(cfg.ControlMode)
+	s.controller.SetTargetConfig(cfg.TargetConfig())
 	s.controller.SetManual(cfg.ManualSpeedPtr())
 }
 

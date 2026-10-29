@@ -10,14 +10,19 @@ const (
 	// 强制 Fan1 0%→100% 时 0xB0/0xB1 从 0 跳到 ~3800，空闲态 ~5000 rpm，且与
 	// 机器自带控制台读数一致。此前误用的 0xD0-0xD3 恒为常量 99、强制满速纹丝不动，
 	// 根本不是 RPM 寄存器——那条路径因当时接的 GMWMI reader 忽略入参而从未真正跑过。
-	ECRegFan1RPMLow     = "0xB0"
-	ECRegFan1RPMHigh    = "0xB1"
-	ECRegFan2RPMLow     = "0xB2"
-	ECRegFan2RPMHigh    = "0xB3"
-	ECFanRelease        = "0xFF"
-	SamplesPerCycle     = 6
-	SampleInterval      = time.Second
-	HysteresisTemp      = 2.0
+	ECRegFan1RPMLow  = "0xB0"
+	ECRegFan1RPMHigh = "0xB1"
+	ECRegFan2RPMLow  = "0xB2"
+	ECRegFan2RPMHigh = "0xB3"
+	ECFanRelease     = "0xFF"
+	SamplesPerCycle  = 6
+	SampleInterval   = time.Second
+	HysteresisTemp   = 2.0
+	// 高温硬保护：自动模式下达到阈值立即把 EC 上限放到 100%。
+	// 参考 QNLXS/S8D6 的实测阈值（CPU 92°C / GPU 87°C）。
+	PanicCPUTemp        = 92.0
+	PanicGPUTemp        = 87.0
+	PanicFanPercent     = 100
 	LoopDriftTolerance  = 5 * time.Second
 	ExpectedCycleJitter = 1300 * time.Millisecond
 	HeartbeatInterval   = 30 * time.Second

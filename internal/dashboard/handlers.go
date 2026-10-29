@@ -23,12 +23,21 @@ type stateResponse struct {
 }
 
 type updateRequest struct {
-	Curve         []controller.Point `json:"curve"`
-	Strategy      string             `json:"strategy"`
-	ManualEnabled *bool              `json:"manual_enabled"`
-	ManualSpeed   *int               `json:"manual_speed"`
-	Theme         string             `json:"theme"`
-	TimeEntry     string             `json:"time_entry"`
+	Curve            []controller.Point `json:"curve"`
+	Strategy         string             `json:"strategy"`
+	ControlMode      string             `json:"control_mode"`
+	TargetTemp       *float64           `json:"target_temp"`
+	TargetHysteresis *float64           `json:"target_hysteresis"`
+	TargetKP         *float64           `json:"target_kp"`
+	TargetBias       *int               `json:"target_bias"`
+	TargetMin        *int               `json:"target_min"`
+	TargetMax        *int               `json:"target_max"`
+	TargetUpStep     *int               `json:"target_up_step"`
+	TargetDownStep   *int               `json:"target_down_step"`
+	ManualEnabled    *bool              `json:"manual_enabled"`
+	ManualSpeed      *int               `json:"manual_speed"`
+	Theme            string             `json:"theme"`
+	TimeEntry        string             `json:"time_entry"`
 }
 
 type presetRequest struct {
@@ -96,6 +105,10 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid strategy", http.StatusBadRequest)
 		return
 	}
+	if req.ControlMode != "" && !controller.ValidControlMode(req.ControlMode) {
+		http.Error(w, "invalid control_mode", http.StatusBadRequest)
+		return
+	}
 
 	s.cfgMu.Lock()
 	cfg := s.cfg.Clone()
@@ -104,6 +117,33 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Strategy != "" {
 		cfg.Strategy = req.Strategy
+	}
+	if req.ControlMode != "" {
+		cfg.ControlMode = req.ControlMode
+	}
+	if req.TargetTemp != nil {
+		cfg.TargetTemp = *req.TargetTemp
+	}
+	if req.TargetHysteresis != nil {
+		cfg.TargetHysteresis = *req.TargetHysteresis
+	}
+	if req.TargetKP != nil {
+		cfg.TargetKP = *req.TargetKP
+	}
+	if req.TargetBias != nil {
+		cfg.TargetBias = *req.TargetBias
+	}
+	if req.TargetMin != nil {
+		cfg.TargetMin = *req.TargetMin
+	}
+	if req.TargetMax != nil {
+		cfg.TargetMax = *req.TargetMax
+	}
+	if req.TargetUpStep != nil {
+		cfg.TargetUpStep = *req.TargetUpStep
+	}
+	if req.TargetDownStep != nil {
+		cfg.TargetDownStep = *req.TargetDownStep
 	}
 	if req.ManualSpeed != nil {
 		cfg.ManualSpeed = clampInt(*req.ManualSpeed, 0, 100)

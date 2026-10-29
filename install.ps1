@@ -63,7 +63,7 @@ if (-not $InstallPath.StartsWith($programFilesPrefix, [System.StringComparison]:
 Set-Location -LiteralPath (Split-Path -Parent $MyInvocation.MyCommand.Path) | Out-Null
 
 # 检查必需文件
-$requiredFiles = @("ecc.exe", "assets/ec-probe.exe", "assets/LibreHardwareMonitorLib.dll")
+$requiredFiles = @("ecc.exe", "assets/pawnio/LpcACPIEC.bin", "assets/GmwmiCli.exe", "assets/LibreHardwareMonitorLib.dll")
 $missing = @()
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path $file)) {
@@ -130,6 +130,15 @@ Write-Host ""
 Write-Host "配置文件位置: $env:LOCALAPPDATA\FanController\" -ForegroundColor Cyan
 Write-Host "日志文件位置: $env:LOCALAPPDATA\FanController\fan_controller.log" -ForegroundColor Cyan
 Write-Host ""
+
+$pawnService = Get-Service PawnIO -ErrorAction SilentlyContinue
+if (-not $pawnService) {
+    Write-Host "提示: 未检测到 PawnIO 服务。" -ForegroundColor Yellow
+    Write-Host "      风扇写入需要 PawnIO 2.x（微软 WHCP 签名的端口 I/O 驱动）。" -ForegroundColor White
+    Write-Host "      安装命令: winget install namazso.PawnIO" -ForegroundColor White
+    Write-Host "      未安装时会自动回退到 ec-probe/WinRing0（如果 assets 中存在）。" -ForegroundColor White
+    Write-Host ""
+}
 
 $startNow = "Y"
 try { $startNow = Read-Host "是否立即启动程序？(Y/n)" } catch { }

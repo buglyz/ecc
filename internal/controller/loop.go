@@ -48,6 +48,7 @@ func (c *FanController) run() {
 	for {
 		cycleTemps := make([]float64, 0, SamplesPerCycle)
 		interrupted := false
+		maxCPU, maxGPU := -1.0, -1.0
 		// 采样循环内复用周期首快照：currentMode 会深拷曲线，逐样本取太贵。
 		// 写决策在周期末另行取最新快照，故手动/策略/曲线变化最迟在本周期末生效，
 		// 且 SetCurve 等通过 kick() 触发 nudge 提前结束本周期并立即进入写决策。
@@ -63,6 +64,12 @@ func (c *FanController) run() {
 			default:
 			}
 			temps := c.reader.Read()
+			if temps.CPU != nil && *temps.CPU > maxCPU {
+				maxCPU = *temps.CPU
+			}
+			if temps.GPU != nil && *temps.GPU > maxGPU {
+				maxGPU = *temps.GPU
+			}
 			targetTemp := CombineTemps(state.strategy, temps.CPU, temps.GPU)
 			if targetTemp != nil {
 				cycleTemps = append(cycleTemps, *targetTemp)
@@ -92,12 +99,28 @@ func (c *FanController) run() {
 		var avgTemp *float64
 		var target int
 
-		if state.manualSpeed != nil {
+		if state.manualSpeed == nil && panicTempReached(maxCPU, maxGPU) {
+			// 自动模式的高温硬保护：不经过曲线/滞回，直接把 EC 上限放到 100%。
+			// 手动模式是用户的显式选择，保持不动（与 S8D6 的固定模式行为一致）。
+			target = PanicFanPercent
+			lastCommittedTemp = nil
+			mode = "safety"
+			noTempCycles = 0
+			failsafe = false
+		} else if state.manualSpeed != nil {
 			target = *state.manualSpeed
 			lastCommittedTemp = nil
 			mode = "manual"
 			noTempCycles = 0
 			failsafe = false
+		} else if state.controlMode == ControlModeTarget && len(cycleTemps) > 0 {
+			noTempCycles = 0
+			failsafe = false
+			avg := average(cycleTemps)
+			avgTemp = &avg
+			target = targetControlStep(currentSpeed, avg, state.target, applied)
+			lastCommittedTemp = nil
+			mode = "target"
 		} else if len(cycleTemps) > 0 {
 			if noTempCycles >= NoTempFailSafeCycles {
 				c.logger.Print("温度数据恢复，重新接管风扇控制")
@@ -201,4 +224,9 @@ func (c *FanController) alert() {
 	if handler != nil {
 		handler()
 	}
+}
+
+// panicTempReached 判断自动模式是否触发高温硬保护。
+func panicTempReached(maxCPU, maxGPU float64) bool {
+	return maxCPU >= PanicCPUTemp || maxGPU >= PanicGPUTemp
 }

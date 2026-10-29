@@ -19,28 +19,46 @@ type PresetConfig struct {
 }
 
 type Config struct {
-	Curve         []controller.Point      `json:"curve"`
-	Strategy      string                  `json:"strategy"`
-	Theme         string                  `json:"theme"`
-	TimeEntry     string                  `json:"time_entry"`
-	Minimize      int                     `json:"minimize"`
-	ManualEnabled bool                    `json:"manual_enabled"`
-	ManualSpeed   int                     `json:"manual_speed"`
-	ActivePreset  string                  `json:"active_preset"`
-	Presets       map[string]PresetConfig `json:"presets"`
+	Curve            []controller.Point      `json:"curve"`
+	Strategy         string                  `json:"strategy"`
+	ControlMode      string                  `json:"control_mode"`
+	TargetTemp       float64                 `json:"target_temp"`
+	TargetHysteresis float64                 `json:"target_hysteresis"`
+	TargetKP         float64                 `json:"target_kp"`
+	TargetBias       int                     `json:"target_bias"`
+	TargetMin        int                     `json:"target_min"`
+	TargetMax        int                     `json:"target_max"`
+	TargetUpStep     int                     `json:"target_up_step"`
+	TargetDownStep   int                     `json:"target_down_step"`
+	Theme            string                  `json:"theme"`
+	TimeEntry        string                  `json:"time_entry"`
+	Minimize         int                     `json:"minimize"`
+	ManualEnabled    bool                    `json:"manual_enabled"`
+	ManualSpeed      int                     `json:"manual_speed"`
+	ActivePreset     string                  `json:"active_preset"`
+	Presets          map[string]PresetConfig `json:"presets"`
 }
 
 func Default() Config {
 	return Config{
-		Curve:         cloneCurve(controller.DefaultCurve),
-		Strategy:      controller.DefaultStrategy,
-		Theme:         "light",
-		TimeEntry:     "5",
-		Minimize:      0,
-		ManualEnabled: false,
-		ManualSpeed:   50,
-		ActivePreset:  "balanced",
-		Presets:       defaultPresets(),
+		Curve:            cloneCurve(controller.DefaultCurve),
+		Strategy:         controller.DefaultStrategy,
+		ControlMode:      controller.ControlModeCurve,
+		TargetTemp:       controller.DefaultTargetTemp,
+		TargetHysteresis: controller.DefaultTargetHysteresis,
+		TargetKP:         controller.DefaultTargetKP,
+		TargetBias:       controller.DefaultTargetBias,
+		TargetMin:        controller.DefaultTargetMin,
+		TargetMax:        controller.DefaultTargetMax,
+		TargetUpStep:     controller.DefaultTargetUpStep,
+		TargetDownStep:   controller.DefaultTargetDownStep,
+		Theme:            "light",
+		TimeEntry:        "5",
+		Minimize:         0,
+		ManualEnabled:    false,
+		ManualSpeed:      50,
+		ActivePreset:     "balanced",
+		Presets:          defaultPresets(),
 	}
 }
 
@@ -79,6 +97,27 @@ func Normalize(cfg Config) Config {
 	if !controller.ValidStrategy(cfg.Strategy) {
 		cfg.Strategy = controller.DefaultStrategy
 	}
+	if !controller.ValidControlMode(cfg.ControlMode) {
+		cfg.ControlMode = controller.ControlModeCurve
+	}
+	tc := controller.NormalizeTargetConfig(controller.TargetConfig{
+		Temp:       cfg.TargetTemp,
+		Hysteresis: cfg.TargetHysteresis,
+		KP:         cfg.TargetKP,
+		Bias:       cfg.TargetBias,
+		Min:        cfg.TargetMin,
+		Max:        cfg.TargetMax,
+		UpStep:     cfg.TargetUpStep,
+		DownStep:   cfg.TargetDownStep,
+	})
+	cfg.TargetTemp = tc.Temp
+	cfg.TargetHysteresis = tc.Hysteresis
+	cfg.TargetKP = tc.KP
+	cfg.TargetBias = tc.Bias
+	cfg.TargetMin = tc.Min
+	cfg.TargetMax = tc.Max
+	cfg.TargetUpStep = tc.UpStep
+	cfg.TargetDownStep = tc.DownStep
 	if cfg.Theme != "dark" {
 		cfg.Theme = "light"
 	}
@@ -100,15 +139,24 @@ func Normalize(cfg Config) Config {
 
 func (c Config) Clone() Config {
 	return Config{
-		Curve:         cloneCurve(c.Curve),
-		Strategy:      c.Strategy,
-		Theme:         c.Theme,
-		TimeEntry:     c.TimeEntry,
-		Minimize:      c.Minimize,
-		ManualEnabled: c.ManualEnabled,
-		ManualSpeed:   c.ManualSpeed,
-		ActivePreset:  c.ActivePreset,
-		Presets:       clonePresets(c.Presets),
+		Curve:            cloneCurve(c.Curve),
+		Strategy:         c.Strategy,
+		ControlMode:      c.ControlMode,
+		TargetTemp:       c.TargetTemp,
+		TargetHysteresis: c.TargetHysteresis,
+		TargetKP:         c.TargetKP,
+		TargetBias:       c.TargetBias,
+		TargetMin:        c.TargetMin,
+		TargetMax:        c.TargetMax,
+		TargetUpStep:     c.TargetUpStep,
+		TargetDownStep:   c.TargetDownStep,
+		Theme:            c.Theme,
+		TimeEntry:        c.TimeEntry,
+		Minimize:         c.Minimize,
+		ManualEnabled:    c.ManualEnabled,
+		ManualSpeed:      c.ManualSpeed,
+		ActivePreset:     c.ActivePreset,
+		Presets:          clonePresets(c.Presets),
 	}
 }
 
@@ -118,6 +166,19 @@ func (c Config) ManualSpeedPtr() *int {
 	}
 	v := c.ManualSpeed
 	return &v
+}
+
+func (c Config) TargetConfig() controller.TargetConfig {
+	return controller.TargetConfig{
+		Temp:       c.TargetTemp,
+		Hysteresis: c.TargetHysteresis,
+		KP:         c.TargetKP,
+		Bias:       c.TargetBias,
+		Min:        c.TargetMin,
+		Max:        c.TargetMax,
+		UpStep:     c.TargetUpStep,
+		DownStep:   c.TargetDownStep,
+	}
 }
 
 func ApplyPreset(cfg *Config, key string) bool {

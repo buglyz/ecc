@@ -251,3 +251,51 @@ func (r *fixedTempReader) Read() Temps {
 func (r *fixedTempReader) Close() error {
 	return nil
 }
+
+func TestPanicTempReached(t *testing.T) {
+	cases := []struct {
+		cpu, gpu float64
+		want     bool
+	}{
+		{80, 70, false},
+		{PanicCPUTemp, 70, true},
+		{80, PanicGPUTemp, true},
+		{PanicCPUTemp - 1, PanicGPUTemp - 1, false},
+	}
+	for _, tc := range cases {
+		if got := panicTempReached(tc.cpu, tc.gpu); got != tc.want {
+			t.Fatalf("panicTempReached(%v, %v)=%t, want %t", tc.cpu, tc.gpu, got, tc.want)
+		}
+	}
+}
+
+func TestTargetControlModeWrites(t *testing.T) {
+	reader := &fixedTempReader{cpu: 71, gpu: 71}
+	writer := &syncWriter{ok: true}
+	fan := NewFanController(reader, writer, DefaultCurve, DefaultStrategy, 10*time.Millisecond, log.New(testWriter{t}, "", 0))
+	fan.SetControlMode(ControlModeTarget)
+	fan.SetTargetConfig(DefaultTargetConfig())
+	fan.Start()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if len(writer.snapshot()) > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	fan.Stop()
+
+	writes := writer.snapshot()
+	if len(writes) == 0 {
+		t.Fatal("target mode produced no EC writes")
+	}
+	if writes[0][0] != ECRegFan1 {
+		t.Fatalf("first write register=%q, want %q", writes[0][0], ECRegFan1)
+	}
+	// 71C, target 66C, bias 55, KP 5 -> desired 80; initial cap starts at bias 55,
+	// +30 step allows 80.
+	if writes[0][1] != "0x50" {
+		t.Fatalf("first write value=%q, want 0x50", writes[0][1])
+	}
+}

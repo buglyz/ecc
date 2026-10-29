@@ -236,6 +236,18 @@ input[type=range]:disabled { opacity: 0.5; }
     <div class="controls">
       <div class="card"><div class="curve-head" style="margin-bottom:10px"><h3 style="margin:0">预设挡位</h3><button class="chip" id="addPreset">+ 新建挡位</button></div><div class="preset-list" id="presetList"></div></div>
       <div class="card"><h3>温度策略</h3><select id="strategy"></select></div>
+      <div class="card"><h3>控制模式</h3>
+        <select id="controlMode">
+          <option value="curve">曲线模式</option>
+          <option value="target">目标温度模式</option>
+        </select>
+        <div class="muted" id="modeHint" style="margin-top:8px"></div>
+        <div id="targetFields" style="display:none;margin-top:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px"><span class="muted">目标温度</span><span><input id="targetTemp" type="number" min="40" max="95" step="1" style="width:76px"> °C</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px"><span class="muted">死区</span><span><input id="targetHysteresis" type="number" min="1" max="10" step="0.5" style="width:76px"> °C</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px"><span class="muted">响应强度</span><span><input id="targetKP" type="number" min="1" max="20" step="0.5" style="width:76px"></span></div>
+        </div>
+      </div>
       <div class="card"><h3>手动模式</h3>
         <label class="switch"><input type="checkbox" id="manualEnabled"><span class="track"></span><span>锁定转速</span></label>
         <input type="range" id="manualSpeed" min="0" max="100">
@@ -272,8 +284,9 @@ let curveDrag=null;
 function onCurveDown(ev){if(!state)return;const co=curveCoords(ev);const curve=state.config.curve;for(let i=0;i<curve.length;i++){const px=co.padL+(curve[i][0]-30)/70*(co.w-co.padL-co.padR),py=co.h-co.padB-curve[i][1]/100*(co.h-co.padT-co.padB);if(Math.hypot(co.mx-px,co.my-py)<=28){curveDrag={i};dirty=true;ev.preventDefault();break}}}
 function onCurveMove(ev){if(!curveDrag||!state)return;const co=curveCoords(ev);let t=30+(co.mx-co.padL)/(co.w-co.padL-co.padR)*70,s=(co.h-co.padB-co.my)/(co.h-co.padT-co.padB)*100;t=Math.max(30,Math.min(100,t));s=Math.max(0,Math.min(100,s));const curve=state.config.curve,i=curveDrag.i;if(i>0)t=Math.max(t,curve[i-1][0]+0.5);if(i<curve.length-1)t=Math.min(t,curve[i+1][0]-0.5);curve[i]=[Math.round(t*10)/10,Math.round(s*10)/10];drawCurve()}
 function onCurveUp(){if(curveDrag){curveDrag=null;save().catch(err=>{saving=false;console.error(err)})}}
+function toggleTargetFields(){const on=$('controlMode').value==='target';$('targetFields').style.display=on?'block':'none';const hint=$('modeHint');if(hint)hint.textContent=on?'自动调整 EC 上限以维持目标温度；曲线不参与':'按曲线插值计算风扇上限'}
 function render(s){const wasDirty=dirty||saving||curveDrag;
-  if(wasDirty&&state&&state.config){s.config.curve=state.config.curve;s.config.strategy=state.config.strategy}
+  if(wasDirty&&state&&state.config){s.config.curve=state.config.curve;s.config.strategy=state.config.strategy;s.config.control_mode=state.config.control_mode;s.config.target_temp=state.config.target_temp;s.config.target_hysteresis=state.config.target_hysteresis;s.config.target_kp=state.config.target_kp}
   state=s;document.body.classList.toggle('dark',s.config.theme==='dark');
   setTemp('cpu','cpuExtra',s.latest.cpu,statsFor(s.history,'cpu'));
   setTemp('gpu','gpuExtra',s.latest.gpu,statsFor(s.history,'gpu'));
@@ -284,7 +297,7 @@ function render(s){const wasDirty=dirty||saving||curveDrag;
   const ago=relTime(s.latest.last_ec_write);const wa=$('writeAgo');if(wa)wa.textContent=ago?('上次写入 '+ago):'';
   $('startup').textContent=s.startup?'移除开机自启动':'添加开机自启动';
   renderPresets(s);
-  if(!wasDirty){$('manualEnabled').checked=!!s.config.manual_enabled;$('manualSpeed').value=s.config.manual_speed;$('manualSpeed').disabled=!s.config.manual_enabled;$('manualValue').textContent=s.config.manual_speed+' %';$('minutes').value=s.config.time_entry;$('strategy').innerHTML=s.strategies.map(v=>'<option value="'+v.key+'">'+v.label+'</option>').join('');$('strategy').value=s.config.strategy;syncRangeChips()}
+  if(!wasDirty){$('manualEnabled').checked=!!s.config.manual_enabled;$('manualSpeed').value=s.config.manual_speed;$('manualSpeed').disabled=!s.config.manual_enabled;$('manualValue').textContent=s.config.manual_speed+' %';$('minutes').value=s.config.time_entry;$('strategy').innerHTML=s.strategies.map(v=>'<option value="'+v.key+'">'+v.label+'</option>').join('');$('strategy').value=s.config.strategy;$('controlMode').value=s.config.control_mode||'curve';$('targetTemp').value=s.config.target_temp;$('targetHysteresis').value=s.config.target_hysteresis;$('targetKP').value=s.config.target_kp;toggleTargetFields();syncRangeChips()}
   draw(s.history);drawCurve()}
 function syncRangeChips(){const m=$('minutes').value;document.querySelectorAll('#rangeChips [data-min]').forEach(b=>b.classList.toggle('active',b.dataset.min===String(m)))}
 function curveEq(a,b){if(!a||!b||a.length!==b.length)return false;for(let i=0;i<a.length;i++){if(a[i][0]!==b[i][0]||a[i][1]!==b[i][1])return false}return true}
@@ -312,11 +325,12 @@ function renderPresets(s){const list=$('presetList');if(!list)return;const ps=s.
     if(act==='restore'){if(!confirm('将「'+nm+'」恢复为出厂参数？'))return}
     presetAct(act,key)})}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function setConn(ok){const d=$('connDot');d.classList.toggle('off',!ok);d.classList.toggle('live',ok);$('connText').textContent=ok?'实时温度监控 · 自动曲线调速 · 手动转速锁定':'连接已断开，正在重试…'}
+function setConn(ok){const d=$('connDot');d.classList.toggle('off',!ok);d.classList.toggle('live',ok);$('connText').textContent=ok?'实时温度监控 · 曲线/目标温度调速 · 手动转速锁定':'连接已断开，正在重试…'}
 async function refresh(){if(refreshing)return;refreshing=true;try{const m=$('minutes').value||5;render(await api('/api/state?minutes='+m));setConn(true);document.title='风扇控制器'}catch(e){setConn(false);document.title='风扇控制器 [离线]';console.error(e)}finally{refreshing=false}}
-async function save(extra={}){if(!state)return;saving=true;try{const curve=state.config.curve.map(p=>[p[0],p[1]]);await api('/api/config',Object.assign({curve,strategy:$('strategy').value,manual_enabled:$('manualEnabled').checked,manual_speed:Number($('manualSpeed').value),theme:document.body.classList.contains('dark')?'dark':'light',time_entry:$('minutes').value},extra));dirty=false;notify('设置已保存');await refresh()}catch(e){actionError('保存设置',e)}finally{saving=false}}
-document.addEventListener('input',e=>{if(['strategy','manualEnabled','manualSpeed','minutes'].includes(e.target.id))dirty=true});
-document.addEventListener('change',e=>{if(['strategy','manualEnabled','manualSpeed','minutes'].includes(e.target.id)){if(e.target.id==='minutes')syncRangeChips();save().catch(err=>{saving=false;console.error(err)})}});
+async function save(extra={}){if(!state)return;saving=true;try{const curve=state.config.curve.map(p=>[p[0],p[1]]);await api('/api/config',Object.assign({curve,strategy:$('strategy').value,control_mode:$('controlMode').value,target_temp:Number($('targetTemp').value),target_hysteresis:Number($('targetHysteresis').value),target_kp:Number($('targetKP').value),manual_enabled:$('manualEnabled').checked,manual_speed:Number($('manualSpeed').value),theme:document.body.classList.contains('dark')?'dark':'light',time_entry:$('minutes').value},extra));dirty=false;notify('设置已保存');await refresh()}catch(e){actionError('保存设置',e)}finally{saving=false}}
+document.addEventListener('input',e=>{if(['strategy','manualEnabled','manualSpeed','minutes','controlMode','targetTemp','targetHysteresis','targetKP'].includes(e.target.id))dirty=true});
+document.addEventListener('change',e=>{if(['strategy','manualEnabled','manualSpeed','minutes','controlMode','targetTemp','targetHysteresis','targetKP'].includes(e.target.id)){if(e.target.id==='minutes')syncRangeChips();save().catch(err=>{saving=false;console.error(err)})}});
+$('controlMode').addEventListener('change',toggleTargetFields);
 $('manualSpeed').addEventListener('input',()=>{$('manualValue').textContent=$('manualSpeed').value+' %'});
 $('manualEnabled').addEventListener('change',()=>{$('manualSpeed').disabled=!$('manualEnabled').checked});
 $('theme').onclick=()=>{document.body.classList.toggle('dark');dirty=true;save({theme:document.body.classList.contains('dark')?'dark':'light'}).catch(err=>{saving=false;console.error(err)})};

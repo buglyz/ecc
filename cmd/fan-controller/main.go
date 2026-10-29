@@ -22,9 +22,11 @@ import (
 	"github.com/buglyz/ecc/internal/controller"
 	"github.com/buglyz/ecc/internal/dashboard"
 	"github.com/buglyz/ecc/internal/ec"
+	"github.com/buglyz/ecc/internal/gmwmi"
 	"github.com/buglyz/ecc/internal/instance"
 	"github.com/buglyz/ecc/internal/logging"
 	"github.com/buglyz/ecc/internal/paths"
+	"github.com/buglyz/ecc/internal/pawnio"
 	"github.com/buglyz/ecc/internal/sensors"
 	"github.com/buglyz/ecc/internal/tray"
 )
@@ -34,6 +36,10 @@ func main() {
 	interval := flag.Int("interval", 1000, "polling interval in milliseconds (default 1000)")
 	dryRun := flag.Bool("dry-run", false, "log EC writes instead of touching hardware")
 	simulate := flag.Bool("simulate", false, "use simulated CPU/GPU temperatures")
+	noPawnIO := flag.Bool("no-pawnio", false, "disable PawnIO and use the ec-probe fallback")
+	watchdogMode := flag.Bool("watchdog", false, "internal: run the fan-release watchdog")
+	watchdogHeartbeat := flag.String("watchdog-heartbeat", "", "internal: watchdog heartbeat file")
+	watchdogTimeoutSec := flag.Int("watchdog-timeout", 90, "internal: watchdog timeout in seconds")
 	skipAdmin := flag.Bool("skip-admin", false, "do not request administrator elevation")
 	noTray := flag.Bool("no-tray", false, "disable system tray icon")
 	noBrowser := flag.Bool("no-browser", false, "do not auto-open browser")
@@ -72,6 +78,11 @@ func main() {
 	logger, closeLog := logging.New(runtimePaths.LogPath)
 	defer closeLog()
 
+	if *watchdogMode {
+		runWatchdog(*watchdogHeartbeat, time.Duration(*watchdogTimeoutSec)*time.Second, logger)
+		return
+	}
+
 	if !admin.RequireAdmin(*skipAdmin || *dryRun || *simulate) {
 		logger.Print("需要管理员权限，已尝试重新启动为管理员")
 		return
@@ -105,7 +116,7 @@ func main() {
 		defer shutdownListener.Close()
 	}
 
-	if missing := requiredRuntimeFiles(runtimePaths, *dryRun, *simulate); len(missing) > 0 {
+	if missing := requiredRuntimeFiles(runtimePaths, *dryRun, *simulate, *noPawnIO); len(missing) > 0 {
 		logger.Printf("缺少必要运行文件: %s", strings.Join(missing, "; "))
 		fmt.Fprintf(os.Stderr, "缺少必要运行文件:\n%s\n", strings.Join(missing, "\n"))
 		os.Exit(1)
@@ -128,6 +139,8 @@ func main() {
 		logger.Printf("配置保存失败: %v", err)
 	}
 
+	startupOwnership(logger, *dryRun, *simulate)
+
 	var reader controller.SensorReader
 	if *simulate {
 		reader = sensors.NewSimulatedReader()
@@ -141,16 +154,53 @@ func main() {
 		}
 	}()
 
-	writer := ec.Writer{ProbePath: runtimePaths.ECProbe, DryRun: *dryRun || *simulate, Logger: logger}
+	var writer controller.FanWriter
+	backendName := "ec-probe"
+	if !*dryRun && !*simulate && !*noPawnIO {
+		dev, err := pawnio.Open(runtimePaths.PawnIOModule, logger)
+		if err == nil {
+			writer = pawnio.NewWriter(dev, logger)
+			backendName = "PawnIO"
+			defer func() {
+				if err := dev.Close(); err != nil {
+					logger.Printf("PawnIO 关闭失败: %v", err)
+				}
+			}()
+		} else {
+			logger.Printf("PawnIO 不可用，回退 ec-probe: %v", err)
+			if !fileExists(runtimePaths.ECProbe) {
+				logger.Print("ec-probe.exe 也不存在，无法控制风扇")
+				return
+			}
+		}
+	}
+	if writer == nil {
+		writer = ec.Writer{ProbePath: runtimePaths.ECProbe, DryRun: *dryRun || *simulate, Logger: logger}
+	}
+	logger.Printf("风扇写入后端: %s", backendName)
+
 	var fanReader controller.FanReader
 	if !*dryRun && !*simulate {
-		// 通过 EC 寄存器读取风扇 RPM，走与写入相同的 ec-probe / WinRing0 路径。
-		// 转速寄存器 0xB0-0xB3 经真机 dump 交叉验证（见 controller/constants.go）。
-		// ec.Reader.ReadRPM 读不到（缺驱动/缺 ec-probe）时优雅降级返回 false。
-		fanReader = ec.Reader{ProbePath: runtimePaths.ECProbe, Logger: logger}
-		logger.Print("使用 EC 寄存器读取风扇 RPM")
+		// GMWMI 只读温度/RPM；风扇写入由 PawnIO 或 ec-probe 负责。
+		if _, err := os.Stat(runtimePaths.GMWMICli); err != nil {
+			logger.Printf("缺少 GmwmiCli.exe，跳过 RPM 读取: %v", err)
+		} else {
+			client := gmwmi.NewClient(runtimePaths.GMWMICli, false, logger)
+			detectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			caps, err := client.Detect(detectCtx)
+			cancel()
+			if err != nil {
+				logger.Printf("GMWMI 能力检测失败，跳过 RPM 读取: %v", err)
+			} else {
+				fanReader = gmwmi.NewReader(client, caps, logger)
+				logger.Printf("使用 GMWMI 读取风扇 RPM（user_fan=%t 3fan=%t model=%d）",
+					caps.UserFanSupported, caps.Support3Fan, caps.Model)
+			}
+		}
 	}
 	fan := controller.NewFanControllerWithRPM(reader, writer, fanReader, cfg.Curve, cfg.Strategy, pollInterval, logger)
+	fan.SetControlMode(cfg.ControlMode)
+	fan.SetTargetConfig(cfg.TargetConfig())
 	fan.SetManual(cfg.ManualSpeedPtr())
 
 	// 在 Start() 启动 HTTP goroutine 之前快照这些字段：server 持有 &cfg，
@@ -169,6 +219,26 @@ func main() {
 		}
 		logger.Printf("Web 控制台启动失败: %v", err)
 		return
+	}
+
+	// 看门狗：主进程被强杀时由独立进程写回 FF/FF。
+	var heartbeatStop chan struct{}
+	if !*dryRun && !*simulate {
+		heartbeatPath := heartbeatPathForPID(runtimePaths.StateDir)
+		heartbeatStop = make(chan struct{})
+		go runHeartbeat(heartbeatPath, heartbeatStop, logger)
+		wdTimeout := time.Duration(*watchdogTimeoutSec) * time.Second
+		if wdTimeout <= 0 {
+			wdTimeout = watchdogTimeout
+		}
+		if err := startWatchdog(heartbeatPath, wdTimeout, logger); err != nil {
+			logger.Printf("看门狗启动失败: %v", err)
+		}
+		// 先注册清理，后注册 fan.Stop，确保退出时先释放风扇再删心跳。
+		defer func() {
+			close(heartbeatStop)
+			_ = os.Remove(heartbeatPath)
+		}()
 	}
 
 	// 先成功占用控制台端口，再启动硬件控制循环。重复启动时第二个进程会在上方退出，
@@ -195,6 +265,10 @@ func main() {
 	var exitOnce sync.Once
 	triggerExit := func() {
 		exitOnce.Do(func() { close(exitCh) })
+	}
+
+	if !*dryRun && !*simulate {
+		go monitorOEMOwnership(exitCh, triggerExit, logger)
 	}
 
 	if shutdownListener != nil {
@@ -265,20 +339,34 @@ func main() {
 	}
 }
 
-func requiredRuntimeFiles(runtimePaths paths.Paths, dryRun bool, simulate bool) []string {
+func requiredRuntimeFiles(runtimePaths paths.Paths, dryRun bool, simulate bool, noPawnIO bool) []string {
 	if simulate {
 		return nil
 	}
 	missing := make([]string, 0, 2)
 	if !dryRun {
-		if _, err := os.Stat(runtimePaths.ECProbe); err != nil {
-			missing = append(missing, "ec-probe.exe: "+runtimePaths.ECProbe)
+		pawnioOK := !noPawnIO && fileExists(runtimePaths.PawnIOModule)
+		ecOK := fileExists(runtimePaths.ECProbe)
+		if !pawnioOK && !ecOK {
+			if noPawnIO {
+				missing = append(missing, "ec-probe.exe: "+runtimePaths.ECProbe)
+			} else {
+				missing = append(missing, "PawnIO 模块 LpcACPIEC.bin 或 ec-probe.exe")
+			}
 		}
 	}
-	if _, err := os.Stat(runtimePaths.HardwareDLL); err != nil {
+	if !fileExists(runtimePaths.HardwareDLL) {
 		missing = append(missing, "LibreHardwareMonitorLib.dll: "+runtimePaths.HardwareDLL)
 	}
 	return missing
+}
+
+func fileExists(path string) bool {
+	if path == "" {
+		return false
+	}
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func pollIntervalFromMilliseconds(milliseconds int) (time.Duration, error) {

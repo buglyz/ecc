@@ -11,6 +11,8 @@ type Paths struct {
 	WorkingDir    string `json:"working_dir"`
 	StateDir      string `json:"state_dir"`
 	ECProbe       string `json:"ec_probe"`
+	PawnIOModule  string `json:"pawnio_module"`
+	GMWMICli      string `json:"gmwmi_cli"`
 	HardwareDLL   string `json:"hardware_dll"`
 	ConfigPath    string `json:"config_path"`
 	LegacyData    string `json:"legacy_data"`
@@ -50,6 +52,22 @@ func Discover(appName string) Paths {
 			filepath.Join(filepath.Dir(exeDir), "ec-probe.exe"),
 			filepath.Join(wd, "assets", "ec-probe.exe"),
 			filepath.Join(wd, "ec-probe.exe"),
+		),
+		PawnIOModule: firstExisting(
+			filepath.Join(exeDir, "assets", "pawnio", "LpcACPIEC.bin"),
+			filepath.Join(exeDir, "pawnio", "LpcACPIEC.bin"),
+			filepath.Join(exeDir, "LpcACPIEC.bin"),
+			filepath.Join(filepath.Dir(exeDir), "assets", "pawnio", "LpcACPIEC.bin"),
+			filepath.Join(wd, "assets", "pawnio", "LpcACPIEC.bin"),
+			filepath.Join(wd, "LpcACPIEC.bin"),
+		),
+		GMWMICli: firstExisting(
+			filepath.Join(exeDir, "GmwmiCli.exe"),
+			filepath.Join(exeDir, "assets", "GmwmiCli.exe"),
+			filepath.Join(exeDir, "_internal", "GmwmiCli.exe"),
+			filepath.Join(filepath.Dir(exeDir), "GmwmiCli.exe"),
+			filepath.Join(wd, "assets", "GmwmiCli.exe"),
+			filepath.Join(wd, "GmwmiCli.exe"),
 		),
 		HardwareDLL: firstExisting(
 			filepath.Join(exeDir, "_internal", "data", "LibreHardwareMonitorLib.dll"),
