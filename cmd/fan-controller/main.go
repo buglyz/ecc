@@ -39,7 +39,7 @@ func main() {
 	noPawnIO := flag.Bool("no-pawnio", false, "disable PawnIO and use the ec-probe fallback")
 	watchdogMode := flag.Bool("watchdog", false, "internal: run the fan-release watchdog")
 	watchdogHeartbeat := flag.String("watchdog-heartbeat", "", "internal: watchdog heartbeat file")
-	watchdogTimeoutSec := flag.Int("watchdog-timeout", 90, "internal: watchdog timeout in seconds")
+	watchdogTimeoutSec := flag.Int("watchdog-timeout", 30, "internal: watchdog timeout in seconds")
 	skipAdmin := flag.Bool("skip-admin", false, "do not request administrator elevation")
 	noTray := flag.Bool("no-tray", false, "disable system tray icon")
 	noBrowser := flag.Bool("no-browser", false, "do not auto-open browser")
@@ -226,7 +226,11 @@ func main() {
 	if !*dryRun && !*simulate {
 		heartbeatPath := heartbeatPathForPID(runtimePaths.StateDir)
 		heartbeatStop = make(chan struct{})
-		go runHeartbeat(heartbeatPath, heartbeatStop, logger)
+		heartbeatStart := time.Now()
+		healthy := func() bool {
+			return heartbeatHealthy(fan.Latest().UpdatedAt, heartbeatStart, time.Now())
+		}
+		go runHeartbeat(heartbeatPath, heartbeatStop, healthy, logger)
 		wdTimeout := time.Duration(*watchdogTimeoutSec) * time.Second
 		if wdTimeout <= 0 {
 			wdTimeout = watchdogTimeout

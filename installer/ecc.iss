@@ -87,13 +87,25 @@ begin
   SetupPath := ExpandConstant('{app}\assets\pawnio\PawnIO_setup.exe');
   if not FileExists(SetupPath) then
   begin
-    MsgBox('安装包缺少 PawnIO 安装器：' + SetupPath, mbError, MB_OK);
+    Log('PawnIO setup file is missing: ' + SetupPath);
+    SuppressibleMsgBox('安装包缺少 PawnIO 安装器：' + SetupPath, mbError, MB_OK, IDOK);
     exit;
   end;
   if not Exec(SetupPath, '-install -silent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    MsgBox('无法启动 PawnIO 安装器。ECC 将回退到 ec-probe。', mbInformation, MB_OK)
-  else if ResultCode <> 0 then
-    MsgBox('PawnIO 安装返回代码 ' + IntToStr(ResultCode) + '。ECC 将回退到 ec-probe。', mbInformation, MB_OK);
+  begin
+    Log('PawnIO setup failed to start');
+    SuppressibleMsgBox('无法启动 PawnIO 安装器。ECC 将回退到 ec-probe。', mbInformation, MB_OK, IDOK);
+    exit;
+  end;
+  // 以服务是否出现为准，避免把安装器的非零退出码误判为失败。
+  Sleep(1000);
+  if NeedsPawnIO then
+  begin
+    Log('PawnIO setup finished but the service is still missing; exit code ' + IntToStr(ResultCode));
+    SuppressibleMsgBox('PawnIO 安装后未检测到服务，ECC 将回退到 ec-probe。', mbInformation, MB_OK, IDOK);
+  end
+  else
+    Log('PawnIO service installed successfully');
 end;
 
 function EccOpenEventW(dwDesiredAccess: DWORD; bInheritHandle: BOOL; lpName: String): THandle;

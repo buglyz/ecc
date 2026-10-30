@@ -189,6 +189,8 @@ func ApplyPreset(cfg *Config, key string) bool {
 	cfg.ActivePreset = key
 	cfg.Curve = cloneCurve(preset.Curve)
 	cfg.Strategy = preset.Strategy
+	// 预设是曲线快照；应用预设时切回曲线模式，避免在目标温度模式下“无效果”。
+	cfg.ControlMode = controller.ControlModeCurve
 	return true
 }
 
@@ -253,6 +255,7 @@ func RestorePreset(cfg *Config, key string) bool {
 	if cfg.ActivePreset == key {
 		cfg.Curve = cloneCurve(def.Curve)
 		cfg.Strategy = def.Strategy
+		cfg.ControlMode = controller.ControlModeCurve
 	}
 	return true
 }

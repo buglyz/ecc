@@ -15,16 +15,41 @@ import (
 )
 
 const (
-	heartbeatInterval = 5 * time.Second
-	watchdogTimeout   = 90 * time.Second
+	heartbeatInterval   = 5 * time.Second
+	watchdogTimeout     = 30 * time.Second
+	heartbeatStaleAfter = 30 * time.Second
+	heartbeatStartGrace = 20 * time.Second
 )
 
+// heartbeatHealthy 判断控制循环是否还在正常更新：
+// 启动初期允许一段宽限期；之后要求最新采样时间在 heartbeatStaleAfter 内。
+func heartbeatHealthy(latest, start, now time.Time) bool {
+	if latest.IsZero() {
+		return now.Sub(start) < heartbeatStartGrace
+	}
+	return now.Sub(latest) < heartbeatStaleAfter
+}
+
 // runHeartbeat 定期刷新心跳文件。主进程被强杀后文件仍在，看门狗据此判断。
-func runHeartbeat(path string, stop <-chan struct{}, logger *log.Logger) {
-	write := func() {
+// healthy 返回 false 时停止续命：控制循环卡死但进程未退出时，看门狗仍能释放风扇。
+func runHeartbeat(path string, stop <-chan struct{}, healthy func() bool, logger *log.Logger) {
+	unhealthy := false
+	write := func() bool {
+		if healthy != nil && !healthy() {
+			if !unhealthy {
+				logger.Print("控制循环心跳异常，暂停刷新看门狗心跳")
+				unhealthy = true
+			}
+			return false
+		}
+		if unhealthy {
+			logger.Print("控制循环恢复，继续刷新看门狗心跳")
+			unhealthy = false
+		}
 		if err := os.WriteFile(path, []byte(time.Now().Format(time.RFC3339Nano)), 0o644); err != nil {
 			logger.Printf("写看门狗心跳失败: %v", err)
 		}
+		return true
 	}
 	write()
 	ticker := time.NewTicker(heartbeatInterval)
