@@ -17,7 +17,7 @@ const (
 	ECFanRelease     = "0xFF"
 	SamplesPerCycle  = 6
 	SampleInterval   = time.Second
-	HysteresisTemp   = 2.0
+	HysteresisTemp   = 1.5
 	// 高温硬保护：自动模式下达到阈值立即把 EC 上限放到 100%。
 	// 参考 QNLXS/S8D6 的实测阈值（CPU 92°C / GPU 87°C）。
 	PanicCPUTemp        = 92.0
@@ -25,7 +25,8 @@ const (
 	PanicFanPercent     = 100
 	LoopDriftTolerance  = 5 * time.Second
 	ExpectedCycleJitter = 1300 * time.Millisecond
-	HeartbeatInterval   = 30 * time.Second
+	// 心跳写入：温度稳定时也至少每 10 秒同步一次，防止固件收回控制权。
+	HeartbeatInterval = 10 * time.Second
 	// RPMReadInterval 限制 RPM 硬件查询频率。RPM 读取要各起一次 ec-probe.exe 进程
 	// （两个字节两次进程，每次都加载/卸载一次 WinRing0 驱动，开销可达数十~数百毫秒），
 	// 无需每次采样都做，节流到该间隔，两次之间复用上次结果，避免每秒一轮进程启动的持续开销。

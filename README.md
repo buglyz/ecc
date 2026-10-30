@@ -196,9 +196,9 @@ if desired < current: 最多下调 DownStep
 
 算出目标转速后**并不是每周期都写**，写入受多重条件门控，以减少无谓的 EC 操作与风扇转速抖动：
 
-- **滞回 (Hysteresis)**：若本周期平均温度与「上次已提交温度」相差 `< 2°C`（`HysteresisTemp`），视为温度已稳定，跳过写入。防止温度在临界点附近来回摆动导致风扇忽快忽慢。
+- **滞回 (Hysteresis)**：若本周期平均温度与「上次已提交温度」相差 `< 1.5°C`（`HysteresisTemp`），视为温度已稳定，跳过写入。防止温度在临界点附近来回摆动导致风扇忽快忽慢。
 - **漂移 (Drift)**：若一个周期实际耗时偏离预期（6 × 当前采样间隔 + 抖动容差）超过 `LoopDriftTolerance`（系统卡顿、休眠唤醒等），强制写一次校正。
-- **心跳 (Heartbeat)**：即使温度稳定，每 `30s`（`HeartbeatInterval`）也强制写一次，防止 EC 因固件看门狗把风扇控制权收回。
+- **心跳 (Heartbeat)**：即使温度稳定，每 `10s`（`HeartbeatInterval`）也强制写一次，防止 EC 因固件看门狗把风扇控制权收回。
 - **配置变化**：用户在 Web UI 改了曲线/策略（配置版本号递增），立即强制写入，不等心跳，保证改动秒级生效。
 - **手动模式**：直接锁定用户指定的转速百分比，绕过曲线计算。
 
@@ -333,7 +333,7 @@ EC 固件
 | `SamplesPerCycle` | 6 | 每个控制周期的采样次数 |
 | `SampleInterval` | 1s | 采样间隔（可用 `--interval` 覆盖） |
 | `HysteresisTemp` | 2.0°C | 滞回阈值，温差小于此值不调速 |
-| `HeartbeatInterval` | 30s | 强制写入间隔（防固件收回控制权） |
+| `HeartbeatInterval` | 10s | 强制写入间隔（防固件收回控制权） |
 | `CPUWeight` | 0.7 | weighted 策略的 CPU 权重 |
 | `ECRegFan1 / Fan2` | 0x2C / 0x2D | 风扇转速寄存器 |
 | `ECFanRelease` | 0xFF | 释放控制、交还固件 |
