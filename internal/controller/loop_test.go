@@ -299,3 +299,35 @@ func TestTargetControlModeWrites(t *testing.T) {
 		t.Fatalf("first write value=%q, want 0x50", writes[0][1])
 	}
 }
+
+func TestPanicReleaseReached(t *testing.T) {
+	if !panicReleaseReached(86.9, 81.9) {
+		t.Fatal("temperatures below release thresholds should release")
+	}
+	if panicReleaseReached(PanicCPUTemp-PanicReleaseMargin, 50) {
+		t.Fatal("CPU at release threshold should keep holding")
+	}
+	if panicReleaseReached(50, PanicGPUTemp-PanicReleaseMargin) {
+		t.Fatal("GPU at release threshold should keep holding")
+	}
+}
+
+func TestSafetyReleasesEC(t *testing.T) {
+	reader := &fixedTempReader{cpu: 95, gpu: 50}
+	writer := &syncWriter{ok: true}
+	fan := NewFanController(reader, writer, DefaultCurve, DefaultStrategy, 10*time.Millisecond, log.New(testWriter{t}, "", 0))
+	fan.Start()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if v, ok := writer.last(ECRegFan1); ok && v == "0xff" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	v, ok := writer.last(ECRegFan1)
+	fan.Stop()
+	if !ok || v != "0xff" {
+		t.Fatalf("safety write=%q (ok=%t), want 0xff", v, ok)
+	}
+}

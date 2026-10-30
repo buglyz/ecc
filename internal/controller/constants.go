@@ -18,11 +18,14 @@ const (
 	SamplesPerCycle  = 6
 	SampleInterval   = time.Second
 	HysteresisTemp   = 1.5
-	// 高温硬保护：自动模式下达到阈值立即把 EC 上限放到 100%。
+	// 高温硬保护：达到阈值后写 0xFF 交还 EC 曲线，并在回差内保持。
 	// 参考 QNLXS/S8D6 的实测阈值（CPU 92°C / GPU 87°C）。
-	PanicCPUTemp        = 92.0
-	PanicGPUTemp        = 87.0
-	PanicFanPercent     = 100
+	PanicCPUTemp = 92.0
+	PanicGPUTemp = 87.0
+	// 高温保护解除所需的回差：CPU < 92-5、GPU < 87-5 才恢复普通控制。
+	PanicReleaseMargin = 5.0
+	// 0xFF 表示“不限制”，交还 EC 原厂曲线；比写 100 更可靠。
+	SafetyReleaseValue  = 0xFF
 	LoopDriftTolerance  = 5 * time.Second
 	ExpectedCycleJitter = 1300 * time.Millisecond
 	// 心跳写入：温度稳定时也至少每 10 秒同步一次，防止固件收回控制权。

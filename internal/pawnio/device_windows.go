@@ -362,6 +362,18 @@ func (d *Device) WriteEC(ctx context.Context, reg, val byte) error {
 	return fmt.Errorf("EC 写入 0x%02X=0x%02X 超时", reg, val)
 }
 
+// ReadDuty 读取风扇上限寄存器对应的 EC 实际占空比（0x2C→0x2E，0x2D→0x2F）。
+// 仅用于写入失败时的诊断日志，不参与成功判定。
+func (d *Device) ReadDuty(ctx context.Context, reg byte) (byte, error) {
+	switch reg {
+	case 0x2C:
+		reg = 0x2E
+	case 0x2D:
+		reg = 0x2F
+	}
+	return d.ReadEC(ctx, reg)
+}
+
 func (d *Device) Close() error {
 	if d.mutex != 0 {
 		procReleaseMutex.Call(uintptr(d.mutex))

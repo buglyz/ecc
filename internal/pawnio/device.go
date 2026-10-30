@@ -47,24 +47,31 @@ func (w *Writer) Write(ctx context.Context, register string, valueHex string) bo
 		return false
 	}
 
-	if err := w.dev.WriteEC(ctx, reg, val); err != nil {
-		w.logger.Printf("PawnIO 写入失败: reg=0x%02X value=0x%02X error=%v", reg, val, err)
-		return false
-	}
-
-	// 回读校验。EC 写入后约 100–150ms 才稳定，且读取偶发噪声；按 S8D6
-	// 的实测节奏等待 150ms，最多重试 3 次。
-	for attempt := 0; attempt < 3; attempt++ {
-		time.Sleep(150 * time.Millisecond)
+	// 回读不符时重写一次；EC 写入后约 250ms 才稳定。若仍有偏差，读取
+	// 0x2E/0x2F 的实际占空比写入日志，便于区分“写入未被接受”和“EC 自身曲线覆盖”。
+	for writeAttempt := 0; writeAttempt < 2; writeAttempt++ {
+		if err := w.dev.WriteEC(ctx, reg, val); err != nil {
+			w.logger.Printf("PawnIO 写入失败: reg=0x%02X value=0x%02X error=%v", reg, val, err)
+			return false
+		}
+		time.Sleep(250 * time.Millisecond)
 		got, err := w.dev.ReadEC(ctx, reg)
 		if err != nil {
-			w.logger.Printf("PawnIO 回读失败: reg=0x%02X error=%v", reg, err)
+			w.logger.Printf("PawnIO 回读失败: reg=0x%02X error=%v (write %d)", reg, err, writeAttempt+1)
 			continue
 		}
 		if got == val {
 			return true
 		}
-		w.logger.Printf("PawnIO 回读不符: reg=0x%02X wrote=0x%02X read=0x%02X (attempt %d)", reg, val, got, attempt+1)
+		duty := ""
+		if dr, ok := w.dev.(interface {
+			ReadDuty(context.Context, byte) (byte, error)
+		}); ok {
+			if d, derr := dr.ReadDuty(ctx, reg); derr == nil {
+				duty = fmt.Sprintf(" duty=0x%02X", d)
+			}
+		}
+		w.logger.Printf("PawnIO 回读不符: reg=0x%02X wrote=0x%02X read=0x%02X%s (write %d)", reg, val, got, duty, writeAttempt+1)
 	}
 	return false
 }

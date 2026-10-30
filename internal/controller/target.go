@@ -10,7 +10,7 @@ const (
 	DefaultTargetHysteresis = 4.0
 	DefaultTargetKP         = 5.0
 	DefaultTargetBias       = 55
-	DefaultTargetMin        = 40
+	DefaultTargetMin        = 45
 	DefaultTargetMax        = 100
 	DefaultTargetUpStep     = 30
 	DefaultTargetDownStep   = 10

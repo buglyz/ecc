@@ -41,6 +41,7 @@ func (c *FanController) run() {
 	mode := modeName(state)
 	noTempCycles := 0
 	failsafe := false
+	safetyHold := false
 
 	sampleTimer := time.NewTimer(c.pollInterval)
 	defer sampleTimer.Stop()
@@ -54,7 +55,7 @@ func (c *FanController) run() {
 		// 且 SetCurve 等通过 kick() 触发 nudge 提前结束本周期并立即进入写决策。
 		state = c.currentMode()
 		mode = modeName(state)
-		if failsafe {
+		if failsafe || safetyHold {
 			mode = "safety"
 		}
 		for i := 0; i < SamplesPerCycle; i++ {
@@ -99,65 +100,92 @@ func (c *FanController) run() {
 		var avgTemp *float64
 		var target int
 
-		if state.manualSpeed == nil && panicTempReached(maxCPU, maxGPU) {
-			// 自动模式的高温硬保护：不经过曲线/滞回，直接把 EC 上限放到 100%。
-			// 手动模式是用户的显式选择，保持不动（与 S8D6 的固定模式行为一致）。
-			target = PanicFanPercent
-			lastCommittedTemp = nil
-			mode = "safety"
-			noTempCycles = 0
-			failsafe = false
-		} else if state.manualSpeed != nil {
-			target = *state.manualSpeed
-			lastCommittedTemp = nil
-			mode = "manual"
-			noTempCycles = 0
-			failsafe = false
-		} else if state.controlMode == ControlModeTarget && len(cycleTemps) > 0 {
-			noTempCycles = 0
-			failsafe = false
-			avg := average(cycleTemps)
-			avgTemp = &avg
-			target = targetControlStep(currentSpeed, avg, state.target, applied)
-			lastCommittedTemp = nil
-			mode = "target"
-		} else if len(cycleTemps) > 0 {
-			if noTempCycles >= NoTempFailSafeCycles {
-				c.logger.Print("温度数据恢复，重新接管风扇控制")
+		panicNow := state.manualSpeed == nil && panicTempReached(maxCPU, maxGPU)
+		if panicNow {
+			if !safetyHold {
+				c.logger.Printf("高温保护触发: CPU=%.1f GPU=%.1f，释放 EC 上限", maxCPU, maxGPU)
 			}
-			noTempCycles = 0
-			failsafe = false
-			avg := average(cycleTemps)
-			avgTemp = &avg
-			tempSettled := lastCommittedTemp != nil && math.Abs(avg-*lastCommittedTemp) < HysteresisTemp && lastAppliedVersion == state.version
-			if tempSettled && !(drifted || heartbeatDue) {
-				cycleStart = time.Now()
-				continue
-			}
-			target = ClampSpeed(InterpolateCurve(state.curve, avg))
-			mode = "auto:" + state.strategy
-		} else {
-			// 无任何温度采样：自动模式不能凭旧数据继续写转速。
-			// 被配置变更打断的短周期不构成温度故障证据。
-			if interrupted {
-				cycleStart = time.Now()
-				continue
-			}
-			// 首次达到阈值时释放控制权（若已接管），交还固件兜底。
-			noTempCycles++
-			if noTempCycles == NoTempFailSafeCycles && !failsafe {
-				failsafe = true
-				if applied {
-					c.releaseFansWith(fmt.Sprintf("连续 %d 个周期无有效温度，释放 EC 控制权交还固件", noTempCycles))
-					applied = false
-					lastWrite = time.Now()
-				} else {
-					c.logger.Printf("连续 %d 个周期无有效温度，风扇保持固件控制", noTempCycles)
+			safetyHold = true
+		}
+
+		if safetyHold {
+			if panicNow || !panicReleaseReached(maxCPU, maxGPU) {
+				// 0xFF 不限制 EC；比写 100 更可靠，且用回差避免立即降档。
+				target = SafetyReleaseValue
+				lastCommittedTemp = nil
+				mode = "safety"
+				noTempCycles = 0
+				failsafe = false
+				if maxCPU >= 0 || maxGPU >= 0 {
+					t := math.Max(maxCPU, maxGPU)
+					avgTemp = &t
 				}
-				c.alert()
+			} else {
+				safetyHold = false
+				c.logger.Printf("高温保护解除: CPU=%.1f GPU=%.1f", maxCPU, maxGPU)
+				if currentSpeed > 100 {
+					currentSpeed = 100
+				}
 			}
-			cycleStart = time.Now()
-			continue
+		}
+
+		if !safetyHold {
+			if state.manualSpeed != nil {
+				target = *state.manualSpeed
+				lastCommittedTemp = nil
+				mode = "manual"
+				noTempCycles = 0
+				failsafe = false
+			} else if state.controlMode == ControlModeTarget && len(cycleTemps) > 0 {
+				noTempCycles = 0
+				failsafe = false
+				// 目标温度模式使用 CPU/GPU 中较高的一路，避免加权平均掩盖热源。
+				controlTemp := math.Max(maxCPU, maxGPU)
+				if controlTemp < 0 {
+					controlTemp = average(cycleTemps)
+				}
+				avgTemp = &controlTemp
+				target = targetControlStep(currentSpeed, controlTemp, state.target, applied)
+				lastCommittedTemp = nil
+				mode = "target"
+			} else if len(cycleTemps) > 0 {
+				if noTempCycles >= NoTempFailSafeCycles {
+					c.logger.Print("温度数据恢复，重新接管风扇控制")
+				}
+				noTempCycles = 0
+				failsafe = false
+				avg := average(cycleTemps)
+				avgTemp = &avg
+				tempSettled := lastCommittedTemp != nil && math.Abs(avg-*lastCommittedTemp) < HysteresisTemp && lastAppliedVersion == state.version
+				if tempSettled && !(drifted || heartbeatDue) {
+					cycleStart = time.Now()
+					continue
+				}
+				target = ClampSpeed(InterpolateCurve(state.curve, avg))
+				mode = "auto:" + state.strategy
+			} else {
+				// 无任何温度采样：自动模式不能凭旧数据继续写转速。
+				// 被配置变更打断的短周期不构成温度故障证据。
+				if interrupted {
+					cycleStart = time.Now()
+					continue
+				}
+				// 首次达到阈值时释放控制权（若已接管），交还固件兜底。
+				noTempCycles++
+				if noTempCycles == NoTempFailSafeCycles && !failsafe {
+					failsafe = true
+					if applied {
+						c.releaseFansWith(fmt.Sprintf("连续 %d 个周期无有效温度，释放 EC 控制权交还固件", noTempCycles))
+						applied = false
+						lastWrite = time.Now()
+					} else {
+						c.logger.Printf("连续 %d 个周期无有效温度，风扇保持固件控制", noTempCycles)
+					}
+					c.alert()
+				}
+				cycleStart = time.Now()
+				continue
+			}
 		}
 
 		versionChanged := lastAppliedVersion != state.version
@@ -229,4 +257,9 @@ func (c *FanController) alert() {
 // panicTempReached 判断自动模式是否触发高温硬保护。
 func panicTempReached(maxCPU, maxGPU float64) bool {
 	return maxCPU >= PanicCPUTemp || maxGPU >= PanicGPUTemp
+}
+
+// panicReleaseReached 判断高温保护是否可以解除；留 5°C 回差，避免立刻恢复后再次触发。
+func panicReleaseReached(maxCPU, maxGPU float64) bool {
+	return maxCPU < PanicCPUTemp-PanicReleaseMargin && maxGPU < PanicGPUTemp-PanicReleaseMargin
 }

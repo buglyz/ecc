@@ -16,7 +16,7 @@ func TestTargetControlStep(t *testing.T) {
 		{"lowers with rate limit", 80, 50, true, 70},
 		{"initial starts at bias", 0, 71, false, 80},
 		{"max clamp", 95, 90, true, 100},
-		{"min clamp", 45, 55, true, 40},
+		{"min clamp", 45, 55, true, 45},
 	}
 	for _, tc := range cases {
 		if got := targetControlStep(tc.current, tc.temp, cfg, tc.applied); got != tc.want {
