@@ -61,7 +61,7 @@
   | `GmwmiCli.exe` | 只读温度/RPM 的 WMI 薄封装 |
   | `LibreHardwareMonitorLib.dll` | 读取 CPU/GPU 温度 |
 
-  以下文件仅在回退到 WinRing0 路径时需要，保留可兼容旧环境：
+  以下文件仅在便携版/开发环境的 ec-probe 回退路径中保留；**EXE 安装包不包含它们**，以精简包体并减少未签名 PE 带来的杀软误报：
 
   | 文件 | 作用 |
   |------|------|
@@ -80,6 +80,8 @@
 4. 安装完成后从桌面或开始菜单启动，系统托盘出现图标，浏览器自动打开控制台 `http://127.0.0.1:8765`。
 5. 在控制台中调整风扇曲线、切换预设、设置开机自启动。
 
+> 安装版只包含 PawnIO 后端必需文件（`ecc.exe`、`GmwmiCli.exe`、LHM DLL、`assets/pawnio/*`），不包含 NBFC/ec-probe/Plugins，包体更小，也能降低杀软对未签名 PE 的启发式误报。
+>
 > 卸载：Windows「设置 → 应用 → 已安装的应用」中卸载 ECC Fan Controller。
 > ECC 不会自动卸载 PawnIO，因为它可能被其他程序共享使用。
 

@@ -52,8 +52,12 @@ Name: "chinesesimplified"; MessagesFile: "{#SourceRoot}\installer\languages\Chin
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"
 
 [Files]
+; 安装版只打包 PawnIO 后端必需文件，避免携带 NBFC/ec-probe/Plugins 等
+; 未签名可执行文件，降低杀软启发式误报概率。便携版 assets/ 不受影响。
 Source: "{#SourceRoot}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceRoot}\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceRoot}\assets\GmwmiCli.exe"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "{#SourceRoot}\assets\LibreHardwareMonitorLib.dll"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "{#SourceRoot}\assets\pawnio\*"; DestDir: "{app}\assets\pawnio"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#SourceRoot}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [InstallDelete]
@@ -94,7 +98,7 @@ begin
   if not Exec(SetupPath, '-install -silent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
     Log('PawnIO setup failed to start');
-    SuppressibleMsgBox('无法启动 PawnIO 安装器。ECC 将回退到 ec-probe。', mbInformation, MB_OK, IDOK);
+    SuppressibleMsgBox('无法启动 PawnIO 安装器。ECC 将无法控制风扇。', mbInformation, MB_OK, IDOK);
     exit;
   end;
   // 以服务是否出现为准，避免把安装器的非零退出码误判为失败。
@@ -102,7 +106,7 @@ begin
   if NeedsPawnIO then
   begin
     Log('PawnIO setup finished but the service is still missing; exit code ' + IntToStr(ResultCode));
-    SuppressibleMsgBox('PawnIO 安装后未检测到服务，ECC 将回退到 ec-probe。', mbInformation, MB_OK, IDOK);
+    SuppressibleMsgBox('PawnIO 安装后未检测到服务，ECC 将无法控制风扇。', mbInformation, MB_OK, IDOK);
   end
   else
     Log('PawnIO service installed successfully');
