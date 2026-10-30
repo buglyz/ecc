@@ -27,6 +27,11 @@ AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\ECC
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
+; 升级行为：固定 AppId 让 Inno 识别旧版本；沿用旧目录/任务，
+; 升级时跳过目录页，并在复制前清理旧的 assets，避免残留文件。
+UsePreviousAppDir=yes
+UsePreviousTasks=yes
+DisableDirPage=auto
 PrivilegesRequired=admin
 OutputDir=..\dist
 OutputBaseFilename=ECC-Setup-{#AppVersion}
@@ -50,6 +55,10 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 Source: "{#SourceRoot}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#SourceRoot}\README.md"; DestDir: "{app}"; Flags: ignoreversion
+
+[InstallDelete]
+; 覆盖升级时先清空旧 assets，避免旧版本遗留的 DLL/工具继续存在。
+Type: filesandordirs; Name: "{app}\assets"
 
 [Icons]
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
