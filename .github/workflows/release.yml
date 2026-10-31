@@ -61,10 +61,16 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path release
           Copy-Item -Path ecc.exe -Destination release/
-          Copy-Item -Path assets -Destination release/ -Recurse
+          # 与精简安装包保持一致：只带 PawnIO 后端必需文件，避免 NBFC/ec-probe 等
+          # 未签名可执行文件进入便携包。
+          New-Item -ItemType Directory -Force -Path release/assets/pawnio
+          Copy-Item -Path assets/GmwmiCli.exe -Destination release/assets/
+          Copy-Item -Path assets/LibreHardwareMonitorLib.dll -Destination release/assets/
+          Copy-Item -Path assets/pawnio/* -Destination release/assets/pawnio/ -Recurse
           Copy-Item -Path install.ps1 -Destination release/
           Copy-Item -Path uninstall.ps1 -Destination release/
           Copy-Item -Path README.md -Destination release/
+          Copy-Item -Path CHANGELOG.md -Destination release/
 
           # 创建版本信息文件
           @"
@@ -128,4 +134,28 @@ jobs:
             ```
 
             ### 更新日志
-            查看 [提交历史](https://github.com/${{ github.repository }}/commits/${{ github.event.inputs.tag }}) 了解详细变更。
+            - PawnIO EC 后端，兼容 HVCI；安装包自动安装 PawnIO
+            - GMWMI 只读温度/RPM
+            - 目标温度模式（CPU/GPU 较高值、死区、速率限制）
+            - 高温保护写 `0xFF` 并保持回差，避免反复升降档
+            - 独立看门狗、ControlCenter 所有权仲裁
+            - 全新 Web 控制台
+            - 安装器支持覆盖升级与精简打包
+
+            完整更新日志见仓库 `CHANGELOG.md`。
+
+            ### ⚠️ 杀软误报说明
+            EXE 安装版是未签名的 Inno Setup 构建，部分杀软（尤其火绒）可能误报：
+
+            ```text
+            病毒名称：HEUR:VirTool/Obfuscator.a
+            ```
+
+            这不是已知病毒签名，而是对未签名压缩安装包的启发式判断。遇到时可以选择：
+
+            - 将安装包加入杀软信任区
+            - 向杀软厂商提交误报（附 SHA-256 和本项目地址）
+            - 使用便携版 ZIP
+            - 使用代码签名证书签名（彻底方案）
+
+            安装器会自动检测并安装 PawnIO；如果 PawnIO 安装失败，ECC 将无法控制风扇。
