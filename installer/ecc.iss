@@ -160,26 +160,13 @@ begin
   end;
 end;
 
-procedure MigrateScheduledTask;
-var
-  ResultCode: Integer;
-  Params: String;
-begin
-  Exec(ExpandConstant('{sys}\schtasks.exe'), '/Query /TN "风扇控制"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  if ResultCode = 0 then
-  begin
-    Params := '/Change /TN "风扇控制" /TR "' + ExpandConstant('{app}\ecc.exe') + '"';
-    Exec(ExpandConstant('{sys}\schtasks.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  end;
-end;
-
 procedure RemoveScheduledTask;
 var
   ResultCode: Integer;
 begin
-  Exec(ExpandConstant('{sys}\schtasks.exe'), '/Query /TN "风扇控制"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  if ResultCode = 0 then
-    Exec(ExpandConstant('{sys}\schtasks.exe'), '/Delete /TN "风扇控制" /F', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // 不等待 schtasks：某些机器上 Task Scheduler 查询会挂起，安装/卸载器不能被阻塞。
+  // 升级默认沿用旧目录，任务路径通常不变，因此安装阶段不再做迁移。
+  Exec(ExpandConstant('{sys}\schtasks.exe'), '/Delete /TN "风扇控制" /F', '', SW_HIDE, ewNoWait, ResultCode);
 end;
 
 procedure DeleteConfigAndLogs;
@@ -207,10 +194,7 @@ begin
   if CurStep = ssInstall then
     StopRunningInstance
   else if CurStep = ssPostInstall then
-  begin
-    MigrateScheduledTask;
     InstallPawnIO;
-  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
