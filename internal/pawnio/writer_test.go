@@ -56,3 +56,46 @@ func TestWriterRejectsInvalidInput(t *testing.T) {
 		t.Fatal("Write accepted out-of-range value")
 	}
 }
+
+type dutyFakeEC struct {
+	read   byte
+	duty   byte
+	writes int
+}
+
+func (f *dutyFakeEC) ReadEC(_ context.Context, _ byte) (byte, error) { return f.read, nil }
+func (f *dutyFakeEC) WriteEC(_ context.Context, _, _ byte) error     { f.writes++; return nil }
+func (f *dutyFakeEC) ReadDuty(_ context.Context, _ byte) (byte, error) {
+	return f.duty, nil
+}
+func (f *dutyFakeEC) Close() error { return nil }
+
+func TestWriterAcceptsInvalidReadbackWhenDutyMatches(t *testing.T) {
+	dev := &dutyFakeEC{read: 0x0B, duty: 0x5A}
+	w := NewWriter(dev, log.New(io.Discard, "", 0))
+	if !w.Write(context.Background(), "0x2C", "0x5A") {
+		t.Fatal("Write should accept when actual duty matches target")
+	}
+	if dev.writes != 1 {
+		t.Fatalf("writes=%d, want 1 (no unnecessary rewrite)", dev.writes)
+	}
+}
+
+func TestWriterRejectsInvalidReadbackWhenDutyDiffers(t *testing.T) {
+	dev := &dutyFakeEC{read: 0x0B, duty: 0x20}
+	w := NewWriter(dev, log.New(io.Discard, "", 0))
+	if w.Write(context.Background(), "0x2C", "0x5A") {
+		t.Fatal("Write should reject when actual duty is far from target")
+	}
+	if dev.writes != 2 {
+		t.Fatalf("writes=%d, want 2 (one rewrite)", dev.writes)
+	}
+}
+
+func TestWriterDoesNotUseDutyForRelease(t *testing.T) {
+	dev := &dutyFakeEC{read: 0x0B, duty: 0x64}
+	w := NewWriter(dev, log.New(io.Discard, "", 0))
+	if w.Write(context.Background(), "0x2C", "0xFF") {
+		t.Fatal("release must require exact 0xFF readback")
+	}
+}

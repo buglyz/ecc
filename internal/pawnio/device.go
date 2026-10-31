@@ -63,17 +63,45 @@ func (w *Writer) Write(ctx context.Context, register string, valueHex string) bo
 		if got == val {
 			return true
 		}
-		duty := ""
-		if dr, ok := w.dev.(interface {
-			ReadDuty(context.Context, byte) (byte, error)
-		}); ok {
-			if d, derr := dr.ReadDuty(ctx, reg); derr == nil {
-				duty = fmt.Sprintf(" duty=0x%02X", d)
-			}
+		duty, hasDuty := w.readDuty(ctx, reg)
+		// SQ131 的 0x2C/0x2D 回读可能是 0x0B/0x7F 之类的异常值，但
+		// 0x2E/0x2F 的实际占空比能确认写入已生效。只对普通百分比生效，
+		// 0xFF 释放必须精确回读，不能靠占空比推断。
+		if hasDuty && val <= 100 && absDiff(int(duty), int(val)) <= dutyTolerance {
+			w.logger.Printf("PawnIO 回读不符但占空比确认: reg=0x%02X wrote=0x%02X read=0x%02X duty=0x%02X (write %d)",
+				reg, val, got, duty, writeAttempt+1)
+			return true
 		}
-		w.logger.Printf("PawnIO 回读不符: reg=0x%02X wrote=0x%02X read=0x%02X%s (write %d)", reg, val, got, duty, writeAttempt+1)
+		dutyText := ""
+		if hasDuty {
+			dutyText = fmt.Sprintf(" duty=0x%02X", duty)
+		}
+		w.logger.Printf("PawnIO 回读不符: reg=0x%02X wrote=0x%02X read=0x%02X%s (write %d)", reg, val, got, dutyText, writeAttempt+1)
 	}
 	return false
+}
+
+const dutyTolerance = 15
+
+func (w *Writer) readDuty(ctx context.Context, reg byte) (byte, bool) {
+	dr, ok := w.dev.(interface {
+		ReadDuty(context.Context, byte) (byte, error)
+	})
+	if !ok {
+		return 0, false
+	}
+	d, err := dr.ReadDuty(ctx, reg)
+	if err != nil {
+		return 0, false
+	}
+	return d, true
+}
+
+func absDiff(a, b int) int {
+	if a > b {
+		return a - b
+	}
+	return b - a
 }
 
 func parseByte(s string) (byte, error) {
