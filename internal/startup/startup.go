@@ -49,9 +49,10 @@ func Add(targetPath, identifier string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), scheduledTaskTimeout)
 	defer cancel()
+	// 登录自启动不打开浏览器，只在托盘常驻；用户可从托盘图标打开控制台。
 	cmd := scheduledTaskCommand(ctx, "/Create",
 		"/TN", taskName(identifier),
-		"/TR", `"`+targetAbs+`"`,
+		"/TR", `"`+targetAbs+`" --no-browser`,
 		"/SC", "ONLOGON",
 		"/RL", runLevel,
 		"/RU", u.Username,
