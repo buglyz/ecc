@@ -6,522 +6,1184 @@
 <meta name="ecc-token" content="{{.Token}}">
 <meta name="color-scheme" content="light dark">
 <title>ECC 风扇控制台</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232f5bff'/%3E%3Ccircle cx='12' cy='12' r='3.4' fill='%23fff'/%3E%3Cpath d='M12 8.6V5.2M15.4 12h3.4M12 15.4v3.4M8.6 12H5.2' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232563eb'/%3E%3Ccircle cx='12' cy='12' r='3.2' fill='%23fff'/%3E%3Cpath d='M12 8.8V5.2M15.2 12h3.6M12 15.2v3.6M8.8 12H5.2' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
+/* ==========================================================================
+   CSS 变量体系：现代化、硬核精密调控中心 (紧凑黄金比例)
+   ========================================================================== */
 :root {
-  --bg: #eef2f7;
-  --bg-glow: #e3ebfb;
+  --bg: #f8fafc;
+  --bg-radial: #e2e8f0;
   --surface: #ffffff;
-  --surface-2: #f6f8fc;
-  --surface-3: #eef2f8;
-  --border: #dde4ee;
-  --border-strong: #c8d2e0;
-  --text: #101828;
-  --text-2: #344054;
-  --muted: #667085;
-  --muted-2: #98a2b3;
-  --accent: #2f5bff;
-  --accent-hover: #1e46e8;
-  --accent-soft: rgba(47, 91, 255, 0.10);
-  --accent-line: rgba(47, 91, 255, 0.35);
-  --ok: #0d9f6e;
-  --ok-soft: rgba(13, 159, 110, 0.12);
-  --warn: #b25e00;
-  --warn-soft: rgba(178, 94, 0, 0.12);
-  --danger: #d92d20;
-  --danger-soft: rgba(217, 45, 32, 0.10);
-  --cpu: #e5484d;
-  --gpu: #7c5cff;
-  --target: #e0a100;
-  --fan: #0d9f6e;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 12px 28px -18px rgba(16, 24, 40, 0.45);
-  --radius-lg: 16px;
-  --radius: 12px;
-  --radius-sm: 9px;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  --surface-hover: #f1f5f9;
+  --surface-alt: #f1f5f9;
+  --surface-raised: #ffffff;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-focus: #2563eb;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.08);
+  --accent-glow: rgba(37, 99, 235, 0.25);
+  --ok: #059669;
+  --ok-soft: rgba(5, 150, 105, 0.1);
+  --warn: #d97706;
+  --warn-soft: rgba(217, 119, 6, 0.1);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --cpu: #ef4444;
+  --gpu: #8b5cf6;
+  --target: #f59e0b;
+  --fan: #10b981;
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+  --radius-xl: 14px;
+  --radius-lg: 11px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
+
 html[data-theme="dark"] {
-  --bg: #0b1220;
-  --bg-glow: #111d33;
-  --surface: #131b2b;
-  --surface-2: #182236;
-  --surface-3: #1d2942;
-  --border: #263349;
-  --border-strong: #33445f;
-  --text: #eef2f9;
-  --text-2: #cdd6e4;
-  --muted: #93a1b8;
-  --muted-2: #74839a;
-  --accent: #5b7dff;
-  --accent-hover: #7b95ff;
-  --accent-soft: rgba(91, 125, 255, 0.16);
-  --accent-line: rgba(91, 125, 255, 0.45);
-  --ok: #2ecc9a;
-  --ok-soft: rgba(46, 204, 154, 0.14);
-  --warn: #f0a92e;
-  --warn-soft: rgba(240, 169, 46, 0.14);
-  --danger: #ff6b5e;
-  --danger-soft: rgba(255, 107, 94, 0.14);
-  --cpu: #ff6b6b;
+  --bg: #090d16;
+  --bg-radial: #111827;
+  --surface: #111827;
+  --surface-hover: #1e293b;
+  --surface-alt: #162032;
+  --surface-raised: #1e293b;
+  --border: #1e293d;
+  --border-strong: #334155;
+  --border-focus: #3b82f6;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-soft: rgba(59, 130, 246, 0.15);
+  --accent-glow: rgba(59, 130, 246, 0.35);
+  --ok: #10b981;
+  --ok-soft: rgba(16, 185, 129, 0.15);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.15);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+  --cpu: #f87171;
   --gpu: #a78bfa;
-  --target: #f5c451;
-  --fan: #2ecc9a;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 16px 32px -20px rgba(0, 0, 0, 0.8);
+  --target: #fbbf24;
+  --fan: #34d399;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 10px -2px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.35);
 }
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+
+/* 全局排版 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 body {
-  margin: 0;
   min-height: 100vh;
   font-family: var(--font);
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--text);
-  background:
-    radial-gradient(1000px 520px at 12% -8%, var(--bg-glow) 0%, transparent 60%),
-    var(--bg);
-  transition: background-color .25s ease, color .25s ease;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-main);
+  background-color: var(--bg);
+  background-image: radial-gradient(1200px 600px at 15% -10%, var(--bg-radial) 0%, transparent 70%);
+  background-attachment: fixed;
+  transition: background-color .2s ease, color .2s ease;
+  -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3, p { margin: 0; }
-button, input, select { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
-.shell { max-width: 1360px; margin: 0 auto; padding: 26px 22px 48px; display: flex; flex-direction: column; gap: 20px; }
+button, input, select {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
 
-/* ---------- 顶栏 ---------- */
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.logo { width: 42px; height: 42px; flex: none; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
-.logo svg { width: 24px; height: 24px; }
-.brand h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
-.brand .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
-.top-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.shell {
+  max-width: 1420px;
+  margin: 0 auto;
+  padding: 14px 16px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 
-.conn { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text-2); }
-.conn-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); flex: none; }
+/* 顶栏 */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.logo svg { width: 20px; height: 20px; }
+.brand h1 {
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+.brand .sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+  transition: all .2s ease;
+}
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+  box-shadow: 0 0 0 2px var(--warn-soft);
+  flex-shrink: 0;
+}
+.conn[data-state="online"] { color: var(--text-main); }
+.conn[data-state="online"] .conn-dot { background: var(--ok); box-shadow: 0 0 0 2px var(--ok-soft); }
 .conn[data-state="offline"] { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
-.conn[data-state="offline"] .conn-dot { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
-.conn[data-state="connecting"] { color: var(--warn); border-color: var(--border-strong); background: var(--warn-soft); }
-.conn[data-state="connecting"] .conn-dot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+.conn[data-state="offline"] .conn-dot { background: var(--danger); box-shadow: 0 0 0 2px var(--danger-soft); }
 
-/* ---------- 按钮 / 输入 ---------- */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-2); font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
-.btn:hover { border-color: var(--accent); color: var(--accent); }
-.btn:active { transform: translateY(1px); }
-.btn[disabled] { opacity: .5; cursor: not-allowed; transform: none; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
-.btn.danger { color: var(--danger); border-color: var(--danger); background: var(--surface); }
-.btn.danger:hover { background: var(--danger); color: #fff; }
-.btn.small { padding: 5px 10px; font-size: 12px; }
-.btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-
-input[type="number"], select {
-  width: 100%;
-  padding: 8px 10px;
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
   border: 1px solid var(--border-strong);
   background: var(--surface);
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+  transition: all .15s ease;
+  white-space: nowrap;
+  user-select: none;
 }
-input[type="number"]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
-input[type="number"]:disabled { background: var(--surface-3); color: var(--muted-2); cursor: not-allowed; }
-select { appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; }
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface-hover);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+.btn.danger { border-color: var(--border); color: var(--danger); }
+.btn.danger:hover:not(:disabled) { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.small { padding: 3px 8px; font-size: 11.5px; border-radius: 5px; }
+.btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
-/* ---------- 卡片 ---------- */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 18px 18px 16px; }
-.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.card-head h2 { font-size: 15px; font-weight: 700; letter-spacing: .01em; }
-.card-head .hint { margin-top: 3px; }
-.card-head .side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.hint { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
-.mono-num { font-variant-numeric: tabular-nums; }
+/* ==========================================================================
+   第 1 区：紧凑型硬件遥测驾驶舱 (Telemetry Cockpit)
+   ========================================================================== */
+.cockpit-panel {
+  display: grid;
+  grid-template-columns: 1.8fr 1.5fr;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-md);
+}
 
-/* ---------- 指标 ---------- */
-.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
-.metric-head { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; font-weight: 600; letter-spacing: .02em; }
-.swatch { width: 9px; height: 9px; border-radius: 3px; flex: none; background: var(--muted); }
+.thermal-cluster {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.05fr;
+  gap: 10px;
+}
+.thermal-tile {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.swatch {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-right: 4px;
+}
 .swatch.cpu { background: var(--cpu); }
 .swatch.gpu { background: var(--gpu); }
 .swatch.target { background: var(--target); }
 .swatch.fan { background: var(--fan); }
-.metric-body { display: flex; align-items: baseline; gap: 6px; }
-.metric-value { font-size: 34px; font-weight: 750; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.metric-unit { font-size: 14px; font-weight: 600; color: var(--muted); }
-.metric-foot { font-size: 12px; color: var(--muted); min-height: 18px; }
+
+.tile-val-box {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 2px 0 3px;
+}
+.metric-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.metric-unit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.metric-foot {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .tone-cool { color: var(--ok); }
 .tone-warm { color: var(--warn); }
 .tone-hot { color: var(--danger); }
-.bar { height: 7px; border-radius: 99px; background: var(--surface-3); overflow: hidden; margin: 6px 0 2px; }
-.bar > i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--ok), var(--target), var(--danger)); transition: width .45s ease; }
-.mode-chip { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11.5px; font-weight: 700; }
 
-/* ---------- 布局 ---------- */
-.workspace { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
-.stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-.chart-wrap { position: relative; width: 100%; }
-canvas { display: block; width: 100%; height: auto; }
-#historyChart { aspect-ratio: 16 / 7; min-height: 180px; }
-.curve-wrap { position: relative; }
-#curveChart { aspect-ratio: 16 / 6.6; min-height: 190px; touch-action: none; cursor: crosshair; }
+/* 风扇负载与快速接管滑块 */
+.fan-cluster {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+}
+.fan-cluster-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fan-primary-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.mode-chip {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.bar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ok), var(--target), var(--danger));
+  transition: width .3s ease;
+}
+
+.manual-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .track {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  transition: background .2s ease;
+  flex-shrink: 0;
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  transition: transform .2s ease;
+}
+.switch input:checked + .track { background: var(--accent); }
+.switch input:checked + .track::after { transform: translateX(14px); }
+
+.manual-slider-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
+.manual-value {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  min-width: 40px;
+  text-align: right;
+}
+.manual-value small { font-size: 10px; color: var(--text-muted); }
+
+/* ==========================================================================
+   第 2 区：并排双引擎工作台 (Side-by-Side Dual Deck)
+   左侧：风扇调速核心面板（曲线/目标模式）
+   右侧：全景历史走势监控
+   两图高度适度克制，彻底告别臃肿巨大！
+   ========================================================================== */
+.workstation-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.deck-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deck-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.deck-card-title h2 {
+  font-size: 14.5px;
+  font-weight: 750;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+.deck-card-title p {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 分段切换按钮组 */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+.seg button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+}
+.seg button:hover { color: var(--text-main); }
+.seg button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 预设磁贴卡片排架 (紧凑横排) */
+.preset-shelf-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.preset-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  transition: all .15s ease;
+}
+.preset.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.preset-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+.tag.active { background: var(--accent); color: #ffffff; }
+.tag.modified { background: var(--warn); color: #ffffff; }
+.tag.builtin { background: var(--border); color: var(--text-muted); }
+
+.preset-add {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  border: 1px dashed var(--border-strong);
+}
+.preset-add[hidden] { display: none; }
+.preset-add input {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-size: 11.5px;
+  width: 110px;
+}
+
+/* 提示条组件 */
+.note {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.note.info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.note[hidden] { display: none; }
+
+/* Canvas 容器：克制精致的高度，告别巨大感！ */
+.curve-wrap, .chart-wrap {
+  position: relative;
+  width: 100%;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+#curveChart {
+  aspect-ratio: 16 / 7.6;
+  min-height: 195px;
+  touch-action: none;
+  cursor: crosshair;
+}
 #curveChart.locked { cursor: not-allowed; }
-.lock-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; border-radius: var(--radius); background: var(--surface); opacity: .93; border: 1px dashed var(--border-strong); font-size: 13px; font-weight: 600; color: var(--text-2); }
+
+#historyChart {
+  aspect-ratio: 16 / 7.6;
+  min-height: 195px;
+  cursor: crosshair;
+}
+
+/* 曲线锁定遮罩 */
+.lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(17, 24, 39, 0.78);
+  color: #f8fafc;
+  padding: 16px;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  border-radius: var(--radius-lg);
+  font-size: 12.5px;
+  font-weight: 600;
+}
 .lock-overlay[hidden] { display: none; }
-.legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; font-size: 12.5px; color: var(--muted); }
-.legend span { display: inline-flex; align-items: center; gap: 6px; }
-.legend i { width: 14px; height: 3px; border-radius: 2px; background: var(--muted); }
+
+/* 5 节点紧凑调音台式输入矩阵 */
+.curve-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.node {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all .15s ease;
+}
+.node.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  background: var(--surface);
+}
+.node-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.node-field {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.node-field input {
+  width: 100%;
+  padding: 4px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.node-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  outline: none;
+}
+.node-field input:disabled {
+  background: var(--surface-alt);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  border-color: var(--border);
+}
+.node-field em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.node-field.temp input { color: var(--cpu); }
+.node-field.speed input { color: var(--accent); }
+
+/* 目标温度模式专用参数面板 */
+.target-deck-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.target-deck-container[hidden] { display: none; }
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field > span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+input[type="number"], select, input[type="text"] {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-main);
+  font-size: 12px;
+  transition: all .15s ease;
+}
+input[type="number"]:focus, select:focus, input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  outline: none;
+}
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.readout > div {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  text-align: center;
+}
+.readout span {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.readout strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 750;
+  font-family: var(--font-mono);
+  margin-top: 1px;
+}
+
+/* 历史图例与底栏统计 */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend i {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
 .legend i.cpu { background: var(--cpu); }
 .legend i.gpu { background: var(--gpu); }
 .legend i.target { background: var(--target); }
 .legend i.fan { background: var(--fan); }
-.chart-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
 
-.seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border); flex-wrap: wrap; }
-.seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.seg button:hover { color: var(--text); }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(16, 24, 40, .16); }
-.seg-block { display: grid; grid-template-columns: 1fr 1fr; width: 100%; border-radius: var(--radius); }
-.seg-block button { border-radius: var(--radius-sm); padding: 9px 8px; font-size: 13px; }
-
-.field { display: flex; flex-direction: column; gap: 5px; }
-.field > span { font-size: 12.5px; color: var(--muted); font-weight: 600; }
-.field-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.field-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.divider { height: 1px; background: var(--border); margin: 14px 0; }
-.note { margin-top: 10px; padding: 9px 11px; border-radius: var(--radius-sm); background: var(--warn-soft); color: var(--warn); font-size: 12.5px; font-weight: 600; }
-.note[hidden] { display: none; }
-.note.info { background: var(--accent-soft); color: var(--accent); }
-
-.readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-.readout > div { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
-.readout span { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; }
-.readout strong { font-size: 17px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.readout[hidden] { display: none; }
-
-.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; font-size: 13px; font-weight: 600; color: var(--text-2); }
-.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.switch .track { position: relative; width: 44px; height: 25px; border-radius: 999px; background: var(--border-strong); transition: background .18s ease; flex: none; }
-.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .18s ease; }
-.switch input:checked + .track { background: var(--accent); }
-.switch input:checked + .track::after { transform: translateX(19px); }
-.switch input:disabled + .track { opacity: .5; }
-
-input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 99px; background: var(--surface-3); border: 1px solid var(--border); margin: 14px 0 12px; cursor: pointer; }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .35); cursor: pointer; }
-input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); cursor: pointer; }
-input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
-.manual-value { font-size: 30px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -.02em; color: var(--accent); line-height: 1.1; }
-.manual-value small { font-size: 14px; color: var(--muted); font-weight: 600; margin-left: 2px; }
-
-/* ---------- 曲线表格 ---------- */
-.curve-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-.node { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); padding: 9px 8px; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-.node.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-.node-title { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
-.node-field { display: flex; align-items: center; gap: 5px; }
-.node-field input { padding: 5px 4px; text-align: center; font-size: 13px; font-weight: 650; border-radius: 7px; }
-.node-field em { font-style: normal; font-size: 11px; color: var(--muted); flex: none; }
-.node-field.temp input { color: var(--cpu); }
-.node-field.speed input { color: var(--accent); }
-
-/* ---------- 预设 ---------- */
-.preset-list { display: flex; flex-direction: column; gap: 7px; }
-.preset { display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); }
-.preset.active { border-color: var(--accent); background: var(--accent-soft); }
-.preset-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 3px 2px; text-align: left; cursor: pointer; color: var(--text); font-weight: 600; font-size: 13.5px; border-radius: 6px; }
-.preset-main:hover { color: var(--accent); }
-.preset-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.preset-acts { display: flex; gap: 6px; flex: none; }
-.tag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; flex: none; }
-.tag.builtin { background: var(--surface-3); color: var(--muted); }
-.tag.modified { background: var(--warn-soft); color: var(--warn); }
-.tag.active { background: var(--accent); color: #fff; }
-.preset-add { display: flex; gap: 8px; margin-top: 10px; }
-.preset-add[hidden] { display: none; }
-.preset-add input { flex: 1; }
-
-/* ---------- 提示 ---------- */
-.toasts { position: fixed; z-index: 50; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; max-width: min(400px, calc(100vw - 36px)); }
-.toast { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: #fff; background: #123a2c; border: 1px solid rgba(46, 204, 154, .5); box-shadow: 0 12px 30px rgba(0, 0, 0, .22); opacity: 1; transform: none; transition: opacity .2s ease, transform .2s ease; }
-.toast.error { background: #4a1210; border-color: rgba(255, 107, 94, .55); }
-.toast.leaving { opacity: 0; transform: translateY(6px); }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-
-@media (max-width: 1180px) {
-  .workspace { grid-template-columns: 1fr; }
-  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.chart-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
 }
+
+.history-settings-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+}
+
+/* Toast 消息提示系统 */
+.toasts {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 36px));
+  pointer-events: none;
+}
+.toast {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #0f172a;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastIn .2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.toast.ok { background: #064e3b; border-color: #059669; }
+.toast.error { background: #7f1d1d; border-color: #dc2626; }
+.toast.leaving { opacity: 0; transform: translateY(6px); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   响应式断点适配
+   ========================================================================== */
+@media (max-width: 1080px) {
+  .cockpit-panel { grid-template-columns: 1fr; }
+  .workstation-row { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 640px) {
-  .shell { padding: 18px 14px 36px; gap: 14px; }
-  .metrics { grid-template-columns: 1fr; gap: 10px; }
-  .metric { padding: 13px 15px; }
-  .metric-value { font-size: 30px; }
-  .card { padding: 15px 14px 14px; }
-  .topbar { gap: 12px; }
-  .top-actions { width: 100%; }
-  .top-actions .btn { flex: 1; }
-  .curve-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shell { padding: 12px 10px 32px; gap: 12px; }
+  .topbar { gap: 10px; }
+  .top-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .conn { grid-column: 1 / -1; justify-content: center; }
+  .thermal-cluster { grid-template-columns: 1fr; gap: 8px; }
+  .curve-grid { grid-template-columns: repeat(2, 1fr); }
   .field-row { grid-template-columns: 1fr; }
   .readout { grid-template-columns: 1fr; }
-  #historyChart { min-height: 200px; aspect-ratio: 4 / 3; }
-  #curveChart { min-height: 210px; aspect-ratio: 4 / 3.2; }
+  #historyChart { aspect-ratio: 4 / 3.2; min-height: 180px; }
+  #curveChart { aspect-ratio: 4 / 3.4; min-height: 180px; }
   .seg { width: 100%; justify-content: space-between; }
-  .seg button { flex: 1; padding: 7px 6px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  .seg button { flex: 1; padding: 5px 3px; text-align: center; }
+  .manual-quick-row { flex-direction: column; align-items: stretch; }
 }
 </style>
 </head>
 <body>
+
 <div class="shell">
+  <!-- 顶栏与品牌 -->
   <header class="topbar">
     <div class="brand">
-      <span class="logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="2.2"></circle>
-          <path d="M12 9.8V3.6a3.1 3.1 0 0 1 3.1 3.1c0 2.1-1.5 3.1-1.5 3.1"></path>
-          <path d="M14.2 12h6.2a3.1 3.1 0 0 1-3.1 3.1c-2.1 0-3.1-1.5-3.1-1.5"></path>
-          <path d="M12 14.2v6.2a3.1 3.1 0 0 1-3.1-3.1c0-2.1 1.5-3.1 1.5-3.1"></path>
-          <path d="M9.8 12H3.6a3.1 3.1 0 0 1 3.1-3.1c2.1 0 3.1 1.5 3.1 1.5"></path>
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="2.4"></circle>
+          <path d="M12 9.6V3.6a3 3 0 0 1 3 3c0 2-1.5 3-1.5 3"></path>
+          <path d="M14.4 12h6a3 3 0 0 1-3 3c-2 0-3-1.5-3-1.5"></path>
+          <path d="M12 14.4v6a3 3 0 0 1-3-3c0-2 1.5-3 1.5-3"></path>
+          <path d="M9.6 12H3.6a3 3 0 0 1 3-3c2 0 3 1.5 3 1.5"></path>
         </svg>
-      </span>
+      </div>
       <div>
         <h1>ECC 风扇控制台</h1>
-        <p class="sub">实时监控 · 曲线调速 · 目标温度 · 手动锁定</p>
+        <p class="sub">动态温控 · 曲线微调 · 目标温控 · 手动模式</p>
       </div>
     </div>
+
     <div class="top-actions">
-      <span class="conn" id="conn" data-state="connecting" role="status" aria-live="polite">
+      <div class="conn" id="conn" data-state="connecting" role="status" aria-live="polite">
         <span class="conn-dot" aria-hidden="true"></span>
-        <span id="connText">正在连接…</span>
-      </span>
+        <span id="connText">连接中…</span>
+      </div>
       <button class="btn" id="themeBtn" type="button" aria-pressed="false">深色模式</button>
       <button class="btn" id="startupBtn" type="button">开机自启动：<span id="startupState">--</span></button>
     </div>
   </header>
 
-  <section class="metrics" aria-label="实时状态">
-    <article class="metric">
-      <div class="metric-head"><span class="swatch cpu" aria-hidden="true"></span>CPU 温度</div>
-      <div class="metric-body"><span class="metric-value" id="cpuValue">--</span><span class="metric-unit">°C</span></div>
-      <p class="metric-foot" id="cpuFoot">等待数据…</p>
-    </article>
-    <article class="metric">
-      <div class="metric-head"><span class="swatch gpu" aria-hidden="true"></span>GPU 温度</div>
-      <div class="metric-body"><span class="metric-value" id="gpuValue">--</span><span class="metric-unit">°C</span></div>
-      <p class="metric-foot" id="gpuFoot">等待数据…</p>
-    </article>
-    <article class="metric">
-      <div class="metric-head"><span class="swatch target" aria-hidden="true"></span>目标温度</div>
-      <div class="metric-body"><span class="metric-value" id="targetValue">--</span><span class="metric-unit">°C</span></div>
-      <p class="metric-foot" id="targetFoot">策略合成温度</p>
-    </article>
-    <article class="metric">
-      <div class="metric-head"><span class="swatch fan" aria-hidden="true"></span>风扇上限</div>
-      <div class="metric-body"><span class="metric-value" id="speedValue">--</span><span class="metric-unit" id="speedUnit">%</span></div>
-      <div class="bar" aria-hidden="true"><i id="speedBar"></i></div>
-      <p class="metric-foot" id="fanFoot">EC 上限，非实测占空比</p>
-      <span class="mode-chip" id="modeChip">--</span>
-    </article>
-  </section>
+  <!-- ======================================================================
+       第 1 区：紧凑型硬件遥测驾驶舱 (Telemetry Cockpit)
+       ====================================================================== -->
+  <section class="cockpit-panel" aria-label="实时硬件监控仪表">
+    <!-- 温度区 -->
+    <div class="thermal-cluster">
+      <div class="thermal-tile">
+        <div class="tile-head"><span><i class="swatch cpu"></i>CPU 温度</span></div>
+        <div class="tile-val-box">
+          <span class="metric-value" id="cpuValue">--</span>
+          <span class="metric-unit">°C</span>
+        </div>
+        <div class="metric-foot" id="cpuFoot">等待采样…</div>
+      </div>
 
-  <div class="workspace">
-    <div class="stack">
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>历史趋势</h2>
-            <p class="hint">CPU / GPU / 目标温度与风扇上限</p>
-          </div>
-          <div class="seg" id="rangeChips" role="group" aria-label="历史时间范围">
-            <button type="button" data-min="1" aria-pressed="false">1分</button>
-            <button type="button" data-min="5" aria-pressed="false">5分</button>
-            <button type="button" data-min="15" aria-pressed="false">15分</button>
-            <button type="button" data-min="30" aria-pressed="false">30分</button>
-            <button type="button" data-min="60" aria-pressed="false">60分</button>
-            <button type="button" data-min="120" aria-pressed="false">120分</button>
-            <button type="button" data-min="240" aria-pressed="false">240分</button>
-            <button type="button" data-min="480" aria-pressed="false">480分</button>
-          </div>
+      <div class="thermal-tile">
+        <div class="tile-head"><span><i class="swatch gpu"></i>GPU 温度</span></div>
+        <div class="tile-val-box">
+          <span class="metric-value" id="gpuValue">--</span>
+          <span class="metric-unit">°C</span>
         </div>
-        <div class="legend" aria-hidden="true">
-          <span><i class="cpu"></i>CPU</span>
-          <span><i class="gpu"></i>GPU</span>
-          <span><i class="target"></i>目标温度</span>
-          <span><i class="fan"></i>风扇上限</span>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="historyChart" role="img" aria-label="历史温度与风扇上限趋势图"></canvas>
-        </div>
-        <p class="chart-foot">
-          <span id="chartMeta">--</span>
-          <span id="writeAgo">上次 EC 写入：--</span>
-        </p>
-      </article>
+        <div class="metric-foot" id="gpuFoot">等待采样…</div>
+      </div>
 
-      <article class="card" id="curveCard">
-        <div class="card-head">
-          <div>
-            <h2>风扇曲线</h2>
-            <p class="hint">横轴温度 30–100 °C，纵轴风扇上限 0–100%；拖拽圆点或直接输入数值</p>
-          </div>
-          <div class="side">
-            <span class="tag" id="curveState">--</span>
-            <button class="btn small" id="curveReset" type="button">套用平衡曲线</button>
-          </div>
+      <div class="thermal-tile">
+        <div class="tile-head"><span><i class="swatch target"></i>目标温度</span></div>
+        <div class="tile-val-box">
+          <span class="metric-value" id="targetValue">--</span>
+          <span class="metric-unit">°C</span>
         </div>
-        <div class="curve-wrap">
-          <canvas id="curveChart" role="img" aria-label="风扇曲线编辑图"></canvas>
-          <div class="lock-overlay" id="curveLock" hidden>目标温度模式下曲线不参与调速</div>
-        </div>
-        <div class="curve-grid" id="curveGrid"></div>
-        <p class="note" id="curveNote" hidden>目标温度模式已启用：曲线仅作为备用配置保存，不参与当前调速。</p>
-      </article>
+        <div class="metric-foot" id="targetFoot">策略合成温度</div>
+      </div>
     </div>
 
-    <aside class="stack">
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>控制模式</h2>
-            <p class="hint">曲线跟随温度查表；目标温度模式按温差自动调节上限</p>
+    <!-- 风扇状态与极速手动接管条 -->
+    <div class="fan-cluster">
+      <div class="fan-cluster-top">
+        <div class="fan-primary-readout">
+          <span style="font-size: 12px; font-weight: 700; color: var(--text-muted);"><i class="swatch fan"></i>风扇上限</span>
+          <div style="display: flex; align-items: baseline; gap: 2px;">
+            <span class="metric-value" id="speedValue">--</span>
+            <span class="metric-unit" id="speedUnit">%</span>
           </div>
+          <span class="mode-chip" id="modeChip">--</span>
         </div>
-        <div class="seg seg-block" id="modeSeg" role="group" aria-label="控制模式">
-          <button type="button" data-mode="curve" aria-pressed="false">曲线模式</button>
-          <button type="button" data-mode="target" aria-pressed="false">目标温度模式</button>
-        </div>
-        <p class="note info" id="modeHint">按曲线插值计算风扇上限。</p>
-        <div id="targetFields">
-          <div class="divider"></div>
-          <div class="field-row">
-            <label class="field"><span>目标温度 °C</span><input type="number" id="targetTemp" min="40" max="95" step="1" inputmode="decimal"></label>
-            <label class="field"><span>死区 °C</span><input type="number" id="targetHysteresis" min="1" max="10" step="0.5" inputmode="decimal"></label>
-            <label class="field"><span>响应强度 KP</span><input type="number" id="targetKP" min="1" max="20" step="0.5" inputmode="decimal"></label>
-          </div>
-          <div class="readout" id="targetReadout" hidden>
-            <div><span>目标设定</span><strong id="setpointValue">--</strong></div>
-            <div><span>当前上限</span><strong id="targetSpeedValue">--</strong></div>
-            <div><span>实际转速</span><strong id="targetRpmValue">--</strong></div>
-          </div>
-        </div>
-        <p class="note" id="manualPriority" hidden>手动模式已开启，优先级高于曲线与目标温度模式。</p>
-      </article>
+        <div class="metric-foot" id="fanFoot">EC 上限，非实测转速</div>
+      </div>
 
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>温度策略</h2>
-            <p class="hint">决定如何把 CPU / GPU 温度合成控制温度，曲线与目标温度模式共用</p>
-          </div>
-        </div>
-        <select id="strategy" aria-label="温度策略"></select>
-      </article>
+      <div class="bar" aria-hidden="true"><i id="speedBar"></i></div>
 
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>手动模式</h2>
-            <p class="hint">直接锁定 EC 上限，不依赖温度</p>
-          </div>
-        </div>
-        <div class="switch-row">
-          <label class="switch">
-            <input type="checkbox" id="manualEnabled">
-            <span class="track" aria-hidden="true"></span>
-            <span>锁定转速</span>
-          </label>
+      <div class="manual-quick-row">
+        <label class="switch">
+          <input type="checkbox" id="manualEnabled">
+          <span class="track" aria-hidden="true"></span>
+          <span>手动锁定</span>
+        </label>
+        <div class="manual-slider-box">
+          <input type="range" id="manualSpeed" min="0" max="100" step="1" aria-label="手动风扇百分比滑块">
           <div class="manual-value"><span id="manualValue">50</span><small>%</small></div>
         </div>
-        <input type="range" id="manualSpeed" min="0" max="100" step="1" aria-label="手动风扇百分比">
-        <p class="hint">手动模式优先级最高；高温保护触发时仍会按安全策略处理。</p>
-      </article>
+      </div>
+    </div>
+  </section>
 
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>预设挡位</h2>
-            <p class="hint">点击名称应用；保存把当前曲线写回该挡位</p>
-          </div>
-          <button class="btn small" id="addPresetBtn" type="button">新建挡位</button>
+  <!-- ======================================================================
+       第 2 区：并排双擎工作台 (Side-by-Side Dual Deck)
+       两图尺寸减半并排放置，高度紧凑，一屏总览全局！
+       ====================================================================== -->
+  <main class="workstation-row">
+    <!-- 左卡片：风扇调速核心面板 -->
+    <section class="deck-card" id="curveCard" aria-label="风扇调速核心面板">
+      <div class="deck-card-head">
+        <!-- 控制模式分段切换器 -->
+        <div class="seg" id="modeSeg" role="group" aria-label="控制模式切换">
+          <button type="button" data-mode="curve" aria-pressed="true">阶梯曲线模式</button>
+          <button type="button" data-mode="target" aria-pressed="false">目标温度模式</button>
         </div>
+
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="tag" id="curveState">曲线生效中</span>
+          <button class="btn small" id="curveReset" type="button">平衡曲线</button>
+        </div>
+      </div>
+
+      <!-- 工况预设磁贴架 -->
+      <div class="preset-shelf-wrap">
+        <span style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);">预设挡位：</span>
         <div class="preset-list" id="presetList"></div>
+        <button class="btn small" id="addPresetBtn" type="button">+ 新建</button>
         <div class="preset-add" id="presetAdd" hidden>
-          <input type="text" id="presetName" maxlength="40" placeholder="挡位名称（最多 40 字）" aria-label="新挡位名称">
-          <button class="btn primary small" id="presetAddOk" type="button">创建</button>
+          <input type="text" id="presetName" maxlength="40" placeholder="挡位名称" aria-label="新挡位名称">
+          <button class="btn primary small" id="presetAddOk" type="button">确定</button>
           <button class="btn small" id="presetAddCancel" type="button">取消</button>
         </div>
-      </article>
+      </div>
 
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>设置</h2>
-            <p class="hint">主题与历史范围会写入本地配置文件</p>
-          </div>
+      <!-- 模式提示与警示 -->
+      <div class="note info" id="modeHint">
+        按曲线插值计算上限；1.5°C 迟滞滤波，杜绝频繁波动。
+      </div>
+      <div class="note" id="manualPriority" hidden>
+        ⚠️ 手动调速模式当前已开启，优先级高于曲线与目标温度模式。
+      </div>
+
+      <!-- 目标温度模式专用参数面板 -->
+      <div class="target-deck-container" id="targetFields" hidden>
+        <div class="field-row">
+          <label class="field">
+            <span>目标温度 (°C)</span>
+            <input type="number" id="targetTemp" min="40" max="95" step="1">
+          </label>
+          <label class="field">
+            <span>控制死区 (°C)</span>
+            <input type="number" id="targetHysteresis" min="1" max="10" step="0.5">
+          </label>
+          <label class="field">
+            <span>响应强度 (KP)</span>
+            <input type="number" id="targetKP" min="1" max="20" step="0.5">
+          </label>
         </div>
-        <div class="switch-row">
-          <span class="hint">深色主题</span>
+
+        <div class="readout" id="targetReadout">
+          <div><span>设定目标</span><strong id="setpointValue">--</strong></div>
+          <div><span>当前上限</span><strong id="targetSpeedValue">--</strong></div>
+          <div><span>实测转速</span><strong id="targetRpmValue">--</strong></div>
+        </div>
+      </div>
+
+      <!-- 阶梯风扇曲线 Canvas -->
+      <div class="curve-wrap">
+        <canvas id="curveChart" role="img" aria-label="风扇曲线交互编辑图"></canvas>
+        <div class="lock-overlay" id="curveLock" hidden>
+          目标温度模式下曲线不参与调速
+        </div>
+      </div>
+
+      <!-- 5 节点精密调音矩阵 -->
+      <div class="curve-grid" id="curveGrid"></div>
+
+      <div class="note" id="curveNote" hidden>
+        当前处于目标温度模式：曲线数据已安全保存，但不影响风扇转速。
+      </div>
+    </section>
+
+    <!-- 右卡片：全景历史走势监控 -->
+    <section class="deck-card" aria-label="全景历史走势监控">
+      <div class="deck-card-head">
+        <div class="deck-card-title">
+          <h2>全景时序历史监控</h2>
+          <p>温控趋势跟踪与风扇负载时序对比</p>
+        </div>
+        <div class="seg" id="rangeChips" role="group" aria-label="历史时间范围">
+          <button type="button" data-min="1" aria-pressed="false">1分</button>
+          <button type="button" data-min="5" aria-pressed="false">5分</button>
+          <button type="button" data-min="15" aria-pressed="false">15分</button>
+          <button type="button" data-min="30" aria-pressed="false">30分</button>
+          <button type="button" data-min="60" aria-pressed="false">60分</button>
+          <button type="button" data-min="120" aria-pressed="false">120分</button>
+          <button type="button" data-min="240" aria-pressed="false">240分</button>
+          <button type="button" data-min="480" aria-pressed="false">480分</button>
+        </div>
+      </div>
+
+      <div class="legend" aria-hidden="true">
+        <span><i class="cpu"></i>CPU</span>
+        <span><i class="gpu"></i>GPU</span>
+        <span><i class="target"></i>控制/目标</span>
+        <span><i class="fan"></i>风扇上限</span>
+      </div>
+
+      <!-- 历史趋势 Canvas -->
+      <div class="chart-wrap">
+        <canvas id="historyChart" role="img" aria-label="历史温度与风扇曲线趋势图"></canvas>
+      </div>
+
+      <div class="chart-foot">
+        <span id="chartMeta">采样统计：--</span>
+        <span id="writeAgo">上次 EC 写入：--</span>
+      </div>
+
+      <!-- 偏好设置行 -->
+      <div class="history-settings-bar">
+        <div class="settings-item">
+          <span style="font-weight: 600; color: var(--text-muted);">合成策略：</span>
+          <select id="strategy" aria-label="选择温度合成策略" style="max-width: 170px;"></select>
+        </div>
+
+        <div class="settings-item">
+          <span style="font-weight: 600; color: var(--text-muted);">回溯时长：</span>
+          <input type="number" id="minutes" min="1" max="480" step="1" aria-label="回溯分钟数" style="max-width: 65px; text-align: center;">
+          <span style="color: var(--text-muted);">分</span>
+        </div>
+
+        <div class="settings-item">
+          <span style="font-weight: 600; color: var(--text-muted);">深色：</span>
           <label class="switch">
             <input type="checkbox" id="darkToggle">
             <span class="track" aria-hidden="true"></span>
-            <span class="sr-only">深色主题</span>
+            <span class="sr-only">深色模式</span>
           </label>
         </div>
-        <div class="divider"></div>
-        <label class="field">
-          <span>历史范围（分钟，1–480）</span>
-          <input type="number" id="minutes" min="1" max="480" step="1" inputmode="numeric">
-        </label>
-      </article>
-    </aside>
-  </div>
+      </div>
+    </section>
+  </main>
 </div>
 
-<div class="toasts" id="toast" role="status" aria-live="polite" aria-atomic="false"></div>
+<!-- 浮动通知容器 -->
+<div class="toasts" id="toast" role="status" aria-live="polite"></div>
 
+<!-- ==========================================================================
+   核心 JavaScript 逻辑
+   ========================================================================== -->
 <script>
 (function () {
   'use strict';
 
-  // ---------- 基础 ----------
   var TOKEN = (document.querySelector('meta[name="ecc-token"]') || {}).content || '';
-  var FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif';
   var CURVE_MIN_T = 30, CURVE_MAX_T = 100, CURVE_MIN_S = 0, CURVE_MAX_S = 100;
   var TEMP_FLOOR = 0, TEMP_CEIL = 100;
 
   function $(id) { return document.getElementById(id); }
-  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+  function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
   function round1(v) { return Math.round(v * 10) / 10; }
-  function isNum(v) { return typeof v === 'number' && isFinite(v); }
-  function numOrNull(v) {
+  function isFiniteNum(v) { return typeof v === 'number' && isFinite(v); }
+  function asNumOrNull(v) {
     if (v === null || v === undefined || v === '') return null;
     var n = Number(v);
     return isFinite(n) ? n : null;
   }
-  function text(el, value) { if (el) el.textContent = value == null ? '--' : String(value); }
   function cloneCurve(curve) {
     return (curve || []).map(function (p) { return [Number(p[0]), Number(p[1])]; });
   }
-  function curveEqual(a, b) {
+  function isCurveEqual(a, b) {
     if (!a || !b || a.length !== b.length) return false;
     for (var i = 0; i < a.length; i++) {
       if (Number(a[i][0]) !== Number(b[i][0]) || Number(a[i][1]) !== Number(b[i][1])) return false;
     }
     return true;
   }
-  function parseTime(value) {
-    if (!value) return NaN;
-    var t = Date.parse(value);
+  function parseTimestamp(ts) {
+    if (!ts) return NaN;
+    var t = Date.parse(ts);
     return isFinite(t) ? t : NaN;
   }
-  function relTime(value) {
-    var t = parseTime(value);
+  function formatRelativeTime(ts) {
+    var t = parseTimestamp(ts);
     if (!isFinite(t)) return '';
     var s = Math.max(0, Math.round((Date.now() - t) / 1000));
     if (s < 5) return '刚刚';
@@ -530,277 +1192,282 @@ input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
     if (s < 86400) return Math.round(s / 3600) + ' 小时前';
     return Math.round(s / 86400) + ' 天前';
   }
-  function hhmmss(ms) {
+  function formatTimeHHMMSS(ms) {
     var d = new Date(ms);
-    function p(n) { return String(n).padStart(2, '0'); }
-    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   }
-  function hhmm(ms) {
+  function formatTimeHHMM(ms) {
     var d = new Date(ms);
-    function p(n) { return String(n).padStart(2, '0'); }
-    return p(d.getHours()) + ':' + p(d.getMinutes());
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
-  function tempTone(v) {
-    if (!isNum(v)) return '';
-    if (v >= 80) return 'tone-hot';
-    if (v >= 60) return 'tone-warm';
-    return 'tone-cool';
-  }
-  function cssVar(name) {
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  }
-  function colors() {
-    return {
-      text: cssVar('--text'),
-      muted: cssVar('--muted'),
-      grid: cssVar('--border'),
-      surface: cssVar('--surface'),
-      cpu: cssVar('--cpu'),
-      gpu: cssVar('--gpu'),
-      target: cssVar('--target'),
-      fan: cssVar('--fan'),
-      accent: cssVar('--accent'),
-      accentSoft: cssVar('--accent-soft')
-    };
+  function getCssColor(varName) {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
   }
 
-  // ---------- 提示 ----------
-  var toastBox = $('toast');
-  function toast(message, kind) {
-    // 统一用 textContent 写入，调用方传入的任何文本都不会被当作 HTML 解析。
-    var el = document.createElement('div');
-    el.className = 'toast' + (kind === 'error' ? ' error' : '');
-    el.textContent = message;
-    toastBox.appendChild(el);
-    while (toastBox.children.length > 3) toastBox.removeChild(toastBox.firstChild);
-    var life = kind === 'error' ? 5200 : 2600;
+  // Toast 提示系统
+  var toastShelf = $('toast');
+  function toast(message, type) {
+    var item = document.createElement('div');
+    item.className = 'toast' + (type === 'error' ? ' error' : (type === 'ok' ? ' ok' : ''));
+    item.textContent = message;
+    toastShelf.appendChild(item);
+    while (toastShelf.children.length > 4) {
+      toastShelf.removeChild(toastShelf.firstChild);
+    }
+    var duration = type === 'error' ? 5000 : 2500;
     setTimeout(function () {
-      el.classList.add('leaving');
-      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
-    }, life);
+      item.classList.add('leaving');
+      setTimeout(function () {
+        if (item.parentNode) item.parentNode.removeChild(item);
+      }, 250);
+    }, duration);
   }
 
-  // ---------- API ----------
   function ApiError(message, status) {
     this.name = 'ApiError';
-    this.message = message || '请求失败';
+    this.message = message || '请求异常';
     this.status = status || 0;
   }
   ApiError.prototype = Object.create(Error.prototype);
 
-  function parseError(res) {
-    return res.text().then(function (body) {
-      var msg = String(body || '').trim();
-      if (msg.length > 300) msg = msg.slice(0, 300) + '…';
+  function handleHttpError(res) {
+    return res.text().then(function (text) {
+      var msg = String(text || '').trim();
+      if (msg.length > 200) msg = msg.slice(0, 200) + '…';
       throw new ApiError(msg || ('HTTP ' + res.status), res.status);
     }, function () {
       throw new ApiError('HTTP ' + res.status, res.status);
     });
   }
 
-  function apiGet(path) {
-    return fetch(path, { method: 'GET', cache: 'no-store', headers: { 'Accept': 'application/json' } })
-      .then(function (res) { return res.ok ? res.json() : parseError(res); });
-  }
-  function apiPost(path, body) {
-    return fetch(path, {
-      method: 'POST',
+  function apiGet(url) {
+    return fetch(url, {
+      method: 'GET',
       cache: 'no-store',
-      headers: { 'Content-Type': 'application/json', 'X-ECC-Token': TOKEN },
-      body: JSON.stringify(body || {})
-    }).then(function (res) { return res.ok ? res.json() : parseError(res); });
+      headers: { 'Accept': 'application/json' }
+    }).then(function (res) { return res.ok ? res.json() : handleHttpError(res); });
   }
 
-  // 所有写请求串行执行，避免并发 POST 互相覆盖配置文件。
-  var writeChain = Promise.resolve();
-  function enqueue(task) {
-    var run = writeChain.then(task);
-    writeChain = run.catch(function () {});
-    return run;
+  function apiPost(url, payload) {
+    return fetch(url, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-ECC-Token': TOKEN
+      },
+      body: JSON.stringify(payload || {})
+    }).then(function (res) { return res.ok ? res.json() : handleHttpError(res); });
+  }
+
+  var writeQueue = Promise.resolve();
+  function enqueueWrite(task) {
+    var next = writeQueue.then(task);
+    writeQueue = next.catch(function () {});
+    return next;
   }
 
   function actionError(err) {
     if (!err) return '未知错误';
-    if (err.status === 403) return '写入令牌无效或已过期，请刷新页面后重试';
+    if (err.status === 403) return '会话令牌无效或跨域受阻，请刷新控制台页面';
     if (err.status === 400) return '参数被拒绝：' + err.message;
-    if (err.status === 404) return '接口不存在，请确认程序版本';
-    if (err.status >= 500) return '服务端保存失败：' + err.message;
-    if (err.status) return '请求失败（' + err.status + '）：' + err.message;
-    return '无法连接本地服务，请确认程序仍在运行';
+    if (err.status === 404) return '接口未找到，请检查程序版本';
+    if (err.status >= 500) return '后台服务处理失败：' + err.message;
+    if (err.status) return '请求失败 (' + err.status + '): ' + err.message;
+    return '无法连接后台控制器服务，正在持续重试…';
   }
 
-  // ---------- 应用状态 ----------
-  var app = {
-    state: null,
-    curve: [],
-    curveDirty: false,
-    curveLocked: false,
-    dragIndex: -1,
-    hoverIndex: -1,
-    online: null,
-    lastSuccess: 0,
-    failures: 0,
-    savePending: 0,
-    presetSig: '',
-    manualDragging: false
+  var state = {
+    data: null,
+    curveWorkingCopy: [],
+    curveIsDirty: false,
+    curveIsLocked: false,
+    dragNodeIndex: -1,
+    hoverNodeIndex: -1,
+    isOnline: null,
+    lastSyncTime: 0,
+    failCount: 0,
+    activeSaves: 0,
+    presetListSig: '',
+    isManualRangeDragging: false,
+    historyHoverIndex: -1
   };
 
-  function minutesNow() {
+  function getCurrentMinutes() {
     var v = Number($('minutes').value);
     return isFinite(v) && v >= 1 && v <= 480 ? Math.round(v) : 5;
   }
 
-  function currentConfig() {
-    return app.state ? app.state.config : null;
+  function getCurrentConfig() {
+    return state.data ? state.data.config : null;
   }
 
-  function currentStrategy() {
-    var el = $('strategy');
-    return el && el.value ? el.value : (currentConfig() ? currentConfig().strategy : 'weighted');
+  function getActiveCurve() {
+    return state.curveWorkingCopy && state.curveWorkingCopy.length
+      ? state.curveWorkingCopy
+      : (getCurrentConfig() ? getCurrentConfig().curve : []);
   }
 
-  function currentMode() {
-    return app.state && app.state.config.control_mode === 'target' ? 'target' : 'curve';
+  function getCurrentStrategy() {
+    var sel = $('strategy');
+    return sel && sel.value ? sel.value : (getCurrentConfig() ? getCurrentConfig().strategy : 'weighted');
   }
 
-  function activeCurve() {
-    return app.curve && app.curve.length ? app.curve : (currentConfig() ? currentConfig().curve : []);
-  }
-
-  // ---------- 连接状态 ----------
-  function renderConn() {
-    var el = $('conn');
+  function updateConnectionBadge() {
+    var badge = $('conn');
     var label = $('connText');
-    if (app.online === null) {
-      el.setAttribute('data-state', 'connecting');
-      label.textContent = '正在连接…';
-    } else if (app.online) {
-      el.setAttribute('data-state', 'online');
-      label.textContent = '已连接 · 同步于 ' + hhmmss(app.lastSuccess);
+    if (state.isOnline === null) {
+      badge.setAttribute('data-state', 'connecting');
+      label.textContent = '连接中…';
+    } else if (state.isOnline) {
+      badge.setAttribute('data-state', 'online');
+      label.textContent = '已连接 · ' + formatTimeHHMMSS(state.lastSyncTime);
     } else {
-      el.setAttribute('data-state', 'offline');
-      label.textContent = '离线 · 正在重试…';
+      badge.setAttribute('data-state', 'offline');
+      label.textContent = '离线 · 重试中…';
     }
   }
 
-  // ---------- 指标 ----------
-  function windowStats(key) {
-    var list = (app.state && app.state.history) || [];
-    var min = Infinity, max = -Infinity, sum = 0, n = 0;
-    for (var i = 0; i < list.length; i++) {
-      var v = numOrNull(list[i][key]);
-      if (v === null) continue;
-      if (v < min) min = v;
-      if (v > max) max = v;
-      sum += v;
-      n++;
+  function getWindowStats(field) {
+    var history = (state.data && state.data.history) || [];
+    var min = Infinity, max = -Infinity, sum = 0, count = 0;
+    for (var i = 0; i < history.length; i++) {
+      var val = asNumOrNull(history[i][field]);
+      if (val === null) continue;
+      if (val < min) min = val;
+      if (val > max) max = val;
+      sum += val;
+      count++;
     }
-    if (!n) return null;
-    return { min: min, max: max, avg: sum / n };
+    if (!count) return null;
+    return { min: min, max: max, avg: sum / count };
   }
 
-  function statsText(key) {
-    var st = windowStats(key);
-    if (!st) return '窗口内暂无数据';
-    return '窗口 均 ' + Math.round(st.avg) + '° · 峰 ' + Math.round(st.max) + '°';
+  function formatWindowStatsText(field) {
+    var st = getWindowStats(field);
+    if (!st) return '暂无数据';
+    return '均 ' + Math.round(st.avg) + '° · 峰 ' + Math.round(st.max) + '°';
   }
 
-  function strategyShort(key) {
-    var list = (app.state && app.state.strategies) || [];
+  function getStrategyShortLabel(key) {
+    var list = (state.data && state.data.strategies) || [];
     for (var i = 0; i < list.length; i++) {
       if (list[i].key === key) {
-        var short = String(list[i].label || key).split('(')[0].trim();
-        return short || key;
+        var clean = String(list[i].label || key).split('(')[0].trim();
+        return clean || key;
       }
     }
     return key;
   }
 
-  function modeLabel(mode) {
-    if (!mode) return '未知';
-    if (mode.indexOf('auto:') === 0) return '自动 · ' + strategyShort(mode.slice(5));
-    if (mode === 'target') return '目标温度';
+  function getFriendlyModeLabel(mode) {
+    if (!mode) return '自动';
+    if (mode.indexOf('auto:') === 0) return '自动 · ' + getStrategyShortLabel(mode.slice(5));
+    if (mode === 'target') return '目标温控';
     if (mode === 'manual') return '手动锁定';
     if (mode === 'safety') return '高温保护';
     return mode;
   }
 
-  function setMetric(id, value, tone) {
-    var el = $(id);
-    if (!el) return;
-    el.textContent = isNum(value) ? String(Math.round(value)) : '--';
-    el.className = 'metric-value' + (tone ? ' ' + tone : '');
+  function applyTemperatureColor(el, tempVal) {
+    if (!isFiniteNum(tempVal)) {
+      el.className = 'metric-value';
+      return;
+    }
+    if (tempVal >= 80) el.className = 'metric-value tone-hot';
+    else if (tempVal >= 60) el.className = 'metric-value tone-warm';
+    else el.className = 'metric-value tone-cool';
   }
 
-  function renderMetrics(s) {
-    var latest = s.latest || {};
-    setMetric('cpuValue', numOrNull(latest.cpu), tempTone(numOrNull(latest.cpu)));
-    setMetric('gpuValue', numOrNull(latest.gpu), tempTone(numOrNull(latest.gpu)));
-    setMetric('targetValue', numOrNull(latest.target_temp), tempTone(numOrNull(latest.target_temp)));
-    var speed = numOrNull(latest.speed);
-    if (speed !== null && speed > 100) {
-      var sv = $('speedValue');
-      if (sv) { sv.textContent = 'AUTO'; sv.className = 'metric-value'; }
-      if ($('speedUnit')) $('speedUnit').hidden = true;
+  function renderMetrics(data) {
+    var latest = data.latest || {};
+    var cpu = asNumOrNull(latest.cpu);
+    var gpu = asNumOrNull(latest.gpu);
+    var target = asNumOrNull(latest.target_temp);
+    var speed = asNumOrNull(latest.speed);
+    var rpm = asNumOrNull(latest.actual_rpm);
+    var cfg = data.config || {};
+
+    var cpuEl = $('cpuValue');
+    cpuEl.textContent = isFiniteNum(cpu) ? String(Math.round(cpu)) : '--';
+    applyTemperatureColor(cpuEl, cpu);
+    $('cpuFoot').textContent = formatWindowStatsText('cpu');
+
+    var gpuEl = $('gpuValue');
+    gpuEl.textContent = isFiniteNum(gpu) ? String(Math.round(gpu)) : '--';
+    applyTemperatureColor(gpuEl, gpu);
+    $('gpuFoot').textContent = formatWindowStatsText('gpu');
+
+    var targetEl = $('targetValue');
+    targetEl.textContent = isFiniteNum(target) ? String(Math.round(target)) : '--';
+    applyTemperatureColor(targetEl, target);
+
+    if (cfg.control_mode === 'target') {
+      $('targetFoot').textContent = '较高值 · 设定 ' + Math.round(cfg.target_temp) + ' °C';
     } else {
-      setMetric('speedValue', speed, null);
-      if ($('speedUnit')) $('speedUnit').hidden = false;
+      $('targetFoot').textContent = '策略：' + getStrategyShortLabel(cfg.strategy);
     }
 
-    $('cpuFoot').textContent = statsText('cpu');
-    $('gpuFoot').textContent = statsText('gpu');
-    var cfg = s.config || {};
-    $('targetFoot').textContent = cfg.control_mode === 'target'
-      ? 'CPU/GPU 较高值 · 设定 ' + Math.round(cfg.target_temp) + ' °C'
-      : '策略合成温度 · ' + strategyShort(cfg.strategy);
+    var speedValEl = $('speedValue');
+    var speedUnitEl = $('speedUnit');
+    if (speed !== null && speed > 100) {
+      speedValEl.textContent = 'AUTO';
+      speedValEl.className = 'metric-value';
+      speedUnitEl.hidden = true;
+    } else {
+      speedValEl.textContent = isFiniteNum(speed) ? String(Math.round(speed)) : '--';
+      speedValEl.className = 'metric-value';
+      speedUnitEl.hidden = false;
+    }
 
-    var bar = $('speedBar');
-    if (bar) bar.style.width = (speed === null ? 0 : clamp(speed, 0, 100)) + '%';
+    $('speedBar').style.width = (speed === null ? 0 : clamp(speed, 0, 100)) + '%';
+    $('modeChip').textContent = getFriendlyModeLabel(latest.mode);
 
-    var rpm = numOrNull(latest.actual_rpm);
-    $('fanFoot').textContent = rpm !== null && rpm > 0
-      ? '实际 ' + rpm + ' RPM · EC 上限'
-      : 'EC 上限，非实测占空比';
-    text($('modeChip'), modeLabel(latest.mode));
+    if (rpm !== null && rpm > 0) {
+      $('fanFoot').textContent = '实际 ' + rpm + ' RPM';
+    } else {
+      $('fanFoot').textContent = 'EC 写入上限';
+    }
 
-    var ago = relTime(latest.last_ec_write);
-    $('writeAgo').textContent = ago ? '上次 EC 写入：' + ago : '上次 EC 写入：--';
+    var writeAgo = formatRelativeTime(latest.last_ec_write);
+    $('writeAgo').textContent = writeAgo ? '上次 EC 写入：' + writeAgo : '上次 EC 写入：--';
 
-    // 目标温度模式的实时读数
-    var isTarget = cfg.control_mode === 'target';
-    $('targetReadout').hidden = !isTarget;
-    if (isTarget) {
+    if (cfg.control_mode === 'target') {
       $('setpointValue').textContent = Math.round(cfg.target_temp) + ' °C';
       $('targetSpeedValue').textContent = speed === null ? '--' : (speed > 100 ? 'AUTO' : Math.round(speed) + ' %');
-      $('targetRpmValue').textContent = rpm !== null && rpm > 0 ? rpm + ' RPM' : '--';
+      $('targetRpmValue').textContent = (rpm !== null && rpm > 0) ? rpm + ' RPM' : '--';
     }
   }
 
-  // ---------- 表单同步 ----------
-  function setValueIfIdle(el, value) {
+  function safelySetInputVal(el, val) {
     if (!el || el === document.activeElement) return;
-    el.value = value;
+    el.value = val;
   }
 
-  function syncForm(s) {
-    var cfg = s.config || {};
-    var mode = cfg.control_mode === 'target' ? 'target' : 'curve';
-    document.querySelectorAll('#modeSeg [data-mode]').forEach(function (btn) {
-      btn.setAttribute('aria-pressed', btn.getAttribute('data-mode') === mode ? 'true' : 'false');
+  function syncFormControls(data) {
+    var cfg = data.config || {};
+    var isTarget = cfg.control_mode === 'target';
+
+    document.querySelectorAll('#modeSeg button').forEach(function (btn) {
+      var btnMode = btn.getAttribute('data-mode');
+      btn.setAttribute('aria-pressed', btnMode === cfg.control_mode ? 'true' : 'false');
     });
 
-    setValueIfIdle($('targetTemp'), cfg.target_temp);
-    setValueIfIdle($('targetHysteresis'), cfg.target_hysteresis);
-    setValueIfIdle($('targetKP'), cfg.target_kp);
-    setValueIfIdle($('strategy'), cfg.strategy);
-    setValueIfIdle($('minutes'), cfg.time_entry);
+    $('targetFields').hidden = !isTarget;
+    $('curveNote').hidden = !isTarget;
+    $('modeHint').textContent = isTarget
+      ? '目标温度模式运行中：根据 CPU/GPU 较高值闭环动态调节上限，维持设定温度。'
+      : '按曲线插值计算上限；1.5°C 迟滞滤波，杜绝频繁波动。';
 
-    $('targetFields').hidden = mode !== 'target';
-    $('modeHint').textContent = mode === 'target'
-      ? '按目标温度反馈调节 EC 上限（取 CPU/GPU 较高值）：温度偏离越大，上限调整越快；曲线不参与。'
-      : '按曲线查表计算风扇上限，温度变化时按 1.5 °C 迟滞避免频繁抖动。';
+    safelySetInputVal($('targetTemp'), cfg.target_temp);
+    safelySetInputVal($('targetHysteresis'), cfg.target_hysteresis);
+    safelySetInputVal($('targetKP'), cfg.target_kp);
+    safelySetInputVal($('strategy'), cfg.strategy);
+    safelySetInputVal($('minutes'), cfg.time_entry);
 
-    if (!app.manualDragging) {
+    if (!state.isManualRangeDragging) {
       $('manualEnabled').checked = !!cfg.manual_enabled;
       $('manualSpeed').value = cfg.manual_speed;
       $('manualValue').textContent = String(cfg.manual_speed);
@@ -808,1028 +1475,1219 @@ input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
     $('manualSpeed').disabled = !cfg.manual_enabled;
     $('manualPriority').hidden = !cfg.manual_enabled;
 
-    var dark = cfg.theme === 'dark';
-    $('darkToggle').checked = dark;
-    $('themeBtn').setAttribute('aria-pressed', dark ? 'true' : 'false');
-    $('themeBtn').textContent = dark ? '浅色模式' : '深色模式';
-    applyTheme(dark ? 'dark' : 'light');
+    var isDark = cfg.theme === 'dark';
+    $('darkToggle').checked = isDark;
+    $('themeBtn').textContent = isDark ? '浅色模式' : '深色模式';
+    applyThemeVisual(isDark ? 'dark' : 'light');
 
-    text($('startupState'), s.startup ? '已启用' : '未启用');
-    $('startupBtn').classList.toggle('on', !!s.startup);
-    $('startupBtn').setAttribute('aria-pressed', s.startup ? 'true' : 'false');
+    $('startupState').textContent = data.startup ? '已开启' : '未开启';
+    $('startupBtn').classList.toggle('on', !!data.startup);
 
-    document.querySelectorAll('#rangeChips [data-min]').forEach(function (btn) {
-      btn.setAttribute('aria-pressed', btn.getAttribute('data-min') === String(cfg.time_entry) ? 'true' : 'false');
+    document.querySelectorAll('#rangeChips button').forEach(function (btn) {
+      var minVal = btn.getAttribute('data-min');
+      btn.setAttribute('aria-pressed', minVal === String(cfg.time_entry) ? 'true' : 'false');
     });
 
-    syncCurveForm();
-    updateCurveLock(mode === 'target');
-    renderPresets();
+    syncCurveGrid();
+    updateCurveLockState(isTarget);
+    renderPresetList();
   }
 
-  function applyTheme(theme) {
-    var value = theme === 'dark' ? 'dark' : 'light';
-    if (document.documentElement.getAttribute('data-theme') !== value) {
-      document.documentElement.setAttribute('data-theme', value);
+  function applyThemeVisual(theme) {
+    var mode = theme === 'dark' ? 'dark' : 'light';
+    if (document.documentElement.getAttribute('data-theme') !== mode) {
+      document.documentElement.setAttribute('data-theme', mode);
     }
-    // 仅作为首屏防闪的本地提示，真实值始终以服务端 config.theme 为准。
-    try { window.localStorage.setItem('ecc-theme-hint', value); } catch (e) { /* 隐私模式忽略 */ }
+    try { window.localStorage.setItem('ecc-theme-pref', mode); } catch (e) {}
   }
 
-  // ---------- 状态应用 ----------
-  function render(s) {
-    app.state = s;
-    if (s.config && s.config.time_entry) setValueIfIdle($('minutes'), s.config.time_entry);
-
-    if (!app.curveDirty && app.dragIndex < 0) {
-      app.curve = cloneCurve(s.config.curve);
+  function applyState(data) {
+    state.data = data;
+    if (data.config && data.config.time_entry) {
+      safelySetInputVal($('minutes'), data.config.time_entry);
     }
-    renderConn();
-    renderMetrics(s);
-    renderStrategyOptions(s.strategies || []);
-    if (app.savePending === 0) syncForm(s);
-    scheduleHistoryDraw();
-    scheduleCurveDraw();
+
+    if (!state.curveIsDirty && state.dragNodeIndex < 0) {
+      state.curveWorkingCopy = cloneCurve(data.config.curve);
+    }
+
+    updateConnectionBadge();
+    renderMetrics(data);
+    populateStrategyOptions(data.strategies || []);
+
+    if (state.activeSaves === 0) {
+      syncFormControls(data);
+    }
+
+    requestHistoryChartDraw();
+    requestCurveChartDraw();
   }
 
-  function renderStrategyOptions(list) {
+  function populateStrategyOptions(strategies) {
     var sel = $('strategy');
-    var sig = list.map(function (s) { return s.key; }).join(',');
-    if (sel.getAttribute('data-sig') === sig) return;
-    sel.setAttribute('data-sig', sig);
+    var hash = strategies.map(function (s) { return s.key; }).join(',');
+    if (sel.getAttribute('data-cache') === hash) return;
+    sel.setAttribute('data-cache', hash);
     sel.textContent = '';
-    list.forEach(function (item) {
+    strategies.forEach(function (st) {
       var opt = document.createElement('option');
-      opt.value = item.key;
-      opt.textContent = item.label || item.key;
+      opt.value = st.key;
+      opt.textContent = st.label || st.key;
       sel.appendChild(opt);
     });
   }
 
-  // ---------- Canvas 工具 ----------
-  function fitCanvas(canvas) {
+  function prepareCanvasContext(canvas) {
     var rect = canvas.getBoundingClientRect();
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     var w = Math.max(1, Math.round(rect.width));
     var h = Math.max(1, Math.round(rect.height));
-    var bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+    var bw = Math.round(w * dpr);
+    var bh = Math.round(h * dpr);
     if (canvas.width !== bw || canvas.height !== bh) {
       canvas.width = bw;
       canvas.height = bh;
     }
     var ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    return { ctx: ctx, w: w, h: h };
+    return { ctx: ctx, width: w, height: h };
   }
 
-  // ---------- 历史图表 ----------
-  var historyRaf = 0;
-  function scheduleHistoryDraw() {
-    if (historyRaf) return;
-    historyRaf = requestAnimationFrame(function () {
-      historyRaf = 0;
-      drawHistory();
+  var historyChartAnimId = 0;
+  function requestHistoryChartDraw() {
+    if (historyChartAnimId) return;
+    historyChartAnimId = requestAnimationFrame(function () {
+      historyChartAnimId = 0;
+      drawHistoryChart();
     });
   }
 
-  function avgOf(bucket, pick) {
-    var sum = 0, n = 0;
-    for (var i = 0; i < bucket.length; i++) {
-      var v = pick(bucket[i]);
-      if (v === null) continue;
-      sum += v;
-      n++;
-    }
-    return n ? sum / n : null;
-  }
-
-  function sampleOf(p) {
-    return {
-      ts: parseTime(p.time),
-      cpu: numOrNull(p.cpu),
-      gpu: numOrNull(p.gpu),
-      tgt: numOrNull(p.target_temp),
-      fan: numOrNull(p.speed)
-    };
-  }
-
-  // 按目标像素数聚合抽样：480 分钟（约 2.8 万样本）也能稳定绘制。
-  function decimate(list, maxPoints) {
-    if (list.length <= maxPoints) return list.map(sampleOf);
-    var out = [];
-    var step = list.length / maxPoints;
-    for (var i = 0; i < maxPoints; i++) {
-      var a = Math.floor(i * step);
-      var b = Math.min(list.length, Math.floor((i + 1) * step));
-      if (b <= a) b = a + 1;
-      var bucket = list.slice(a, b);
-      out.push({
-        ts: parseTime(bucket[0].time),
-        cpu: avgOf(bucket, function (p) { return numOrNull(p.cpu); }),
-        gpu: avgOf(bucket, function (p) { return numOrNull(p.gpu); }),
-        tgt: avgOf(bucket, function (p) { return numOrNull(p.target_temp); }),
-        fan: avgOf(bucket, function (p) { return numOrNull(p.speed); })
+  function decimateSamples(rawSamples, targetPointCount) {
+    if (rawSamples.length <= targetPointCount) {
+      return rawSamples.map(function (p) {
+        return {
+          ts: parseTimestamp(p.time),
+          cpu: asNumOrNull(p.cpu),
+          gpu: asNumOrNull(p.gpu),
+          tgt: asNumOrNull(p.target_temp),
+          fan: asNumOrNull(p.speed)
+        };
       });
     }
-    return out;
+
+    var result = [];
+    var bucketSize = rawSamples.length / targetPointCount;
+
+    for (var i = 0; i < targetPointCount; i++) {
+      var start = Math.floor(i * bucketSize);
+      var end = Math.min(rawSamples.length, Math.floor((i + 1) * bucketSize));
+      if (end <= start) end = start + 1;
+      var slice = rawSamples.slice(start, end);
+
+      var sumCpu = 0, nCpu = 0;
+      var sumGpu = 0, nGpu = 0;
+      var sumTgt = 0, nTgt = 0;
+      var sumFan = 0, nFan = 0;
+
+      for (var k = 0; k < slice.length; k++) {
+        var c = asNumOrNull(slice[k].cpu);
+        if (c !== null) { sumCpu += c; nCpu++; }
+        var g = asNumOrNull(slice[k].gpu);
+        if (g !== null) { sumGpu += g; nGpu++; }
+        var t = asNumOrNull(slice[k].target_temp);
+        if (t !== null) { sumTgt += t; nTgt++; }
+        var f = asNumOrNull(slice[k].speed);
+        if (f !== null) { sumFan += f; nFan++; }
+      }
+
+      result.push({
+        ts: parseTimestamp(slice[0].time),
+        cpu: nCpu ? sumCpu / nCpu : null,
+        gpu: nGpu ? sumGpu / nGpu : null,
+        tgt: nTgt ? sumTgt / nTgt : null,
+        fan: nFan ? sumFan / nFan : null
+      });
+    }
+    return result;
   }
 
-  function drawHistory() {
+  function drawHistoryChart() {
     var canvas = $('historyChart');
-    if (!canvas || !app.state) return;
-    var fit = fitCanvas(canvas);
-    var ctx = fit.ctx, W = fit.w, H = fit.h, c = colors();
+    if (!canvas || !state.data) return;
+
+    var prep = prepareCanvasContext(canvas);
+    var ctx = prep.ctx, W = prep.width, H = prep.height;
+
+    var cBorder = getCssColor('--border');
+    var cMuted = getCssColor('--text-muted');
+    var cCpu = getCssColor('--cpu');
+    var cGpu = getCssColor('--gpu');
+    var cTarget = getCssColor('--target');
+    var cFan = getCssColor('--fan');
+
     ctx.clearRect(0, 0, W, H);
 
-    var pad = { l: 38, r: 14, t: 18, b: 24 };
-    var plotW = Math.max(10, W - pad.l - pad.r);
-    var plotH = Math.max(10, H - pad.t - pad.b);
+    var padding = { left: 34, right: 14, top: 16, bottom: 22 };
+    var chartW = Math.max(10, W - padding.left - padding.right);
+    var chartH = Math.max(10, H - padding.top - padding.bottom);
 
-    ctx.font = '11px ' + FONT;
+    ctx.font = '10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+    ctx.strokeStyle = cBorder;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = cMuted;
+    ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
 
-    // 横向网格与温度刻度（0–100 与风扇百分比共用同一刻度）
-    ctx.strokeStyle = c.grid;
-    ctx.lineWidth = 1;
-    ctx.fillStyle = c.muted;
-    ctx.textAlign = 'right';
     for (var i = 0; i <= 5; i++) {
-      var y = pad.t + plotH - (i / 5) * plotH;
+      var y = padding.top + chartH - (i / 5) * chartH;
       ctx.beginPath();
-      ctx.moveTo(pad.l, y);
-      ctx.lineTo(pad.l + plotW, y);
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(padding.left + chartW, y);
       ctx.stroke();
-      ctx.fillText(String(i * 20), pad.l - 6, y);
+      ctx.fillText(String(i * 20), padding.left - 5, y);
     }
     ctx.textAlign = 'left';
-    ctx.fillText('°C / %', 4, pad.t - 8);
+    ctx.fillText('°C / %', 2, padding.top - 6);
 
-    var cutoff = Date.now() - minutesNow() * 60000;
-    var raw = (app.state.history || []).filter(function (p) {
-      var t = parseTime(p.time);
-      return isFinite(t) && t >= cutoff;
+    var cutoffTime = Date.now() - getCurrentMinutes() * 60000;
+    var rawHistory = (state.data.history || []).filter(function (item) {
+      var t = parseTimestamp(item.time);
+      return isFinite(t) && t >= cutoffTime;
     });
 
-    if (!raw.length) {
-      ctx.fillStyle = c.muted;
+    if (!rawHistory.length) {
+      ctx.fillStyle = cMuted;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = '13px ' + FONT;
-      ctx.fillText('等待温度数据…', pad.l + plotW / 2, pad.t + plotH / 2);
+      ctx.fillText('正在采集温控历史数据…', padding.left + chartW / 2, padding.top + chartH / 2);
       $('chartMeta').textContent = '窗口内暂无样本';
       return;
     }
 
-    var pts = decimate(raw, Math.max(120, Math.floor(plotW * 1.5)));
-    var t0 = pts[0].ts;
-    var t1 = pts[pts.length - 1].ts;
-    if (!isFinite(t0) || !isFinite(t1) || t1 <= t0) t1 = t0 + 1000;
+    var points = decimateSamples(rawHistory, Math.max(90, Math.floor(chartW * 1.4)));
+    var tMin = points[0].ts;
+    var tMax = points[points.length - 1].ts;
+    if (!isFinite(tMin) || !isFinite(tMax) || tMax <= tMin) tMax = tMin + 1000;
 
-    function xOf(ts) { return pad.l + ((ts - t0) / (t1 - t0)) * plotW; }
-    function yOf(v) { return pad.t + plotH - (clamp(v, TEMP_FLOOR, TEMP_CEIL) - TEMP_FLOOR) / (TEMP_CEIL - TEMP_FLOOR) * plotH; }
-
-    // 风扇上限：先铺渐变面积
-    var fanPath = [];
-    for (var j = 0; j < pts.length; j++) {
-      if (pts[j].fan === null) { fanPath.push(null); continue; }
-      fanPath.push([xOf(pts[j].ts), yOf(pts[j].fan)]);
+    function getX(ts) {
+      return padding.left + ((ts - tMin) / (tMax - tMin)) * chartW;
     }
-    var segStart = -1;
-    function fillArea(startIdx, endIdx) {
-      if (endIdx <= startIdx) return;
-      var grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + plotH);
-      grad.addColorStop(0, 'rgba(13,159,110,.22)');
-      grad.addColorStop(1, 'rgba(13,159,110,0)');
+    function getY(val) {
+      var clamped = clamp(val, TEMP_FLOOR, TEMP_CEIL);
+      return padding.top + chartH - ((clamped - TEMP_FLOOR) / (TEMP_CEIL - TEMP_FLOOR)) * chartH;
+    }
+
+    var fanPoly = [];
+    for (var j = 0; j < points.length; j++) {
+      if (points[j].fan === null) {
+        fanPoly.push(null);
+      } else {
+        fanPoly.push([getX(points[j].ts), getY(points[j].fan)]);
+      }
+    }
+
+    function renderFanGradient(sIdx, eIdx) {
+      if (eIdx <= sIdx) return;
+      var grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
+      grad.addColorStop(0, 'rgba(16, 185, 129, 0.22)');
+      grad.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
       ctx.beginPath();
-      ctx.moveTo(fanPath[startIdx][0], fanPath[startIdx][1]);
-      for (var k = startIdx + 1; k <= endIdx; k++) ctx.lineTo(fanPath[k][0], fanPath[k][1]);
-      ctx.lineTo(fanPath[endIdx][0], pad.t + plotH);
-      ctx.lineTo(fanPath[startIdx][0], pad.t + plotH);
+      ctx.moveTo(fanPoly[sIdx][0], fanPoly[sIdx][1]);
+      for (var p = sIdx + 1; p <= eIdx; p++) {
+        ctx.lineTo(fanPoly[p][0], fanPoly[p][1]);
+      }
+      ctx.lineTo(fanPoly[eIdx][0], padding.top + chartH);
+      ctx.lineTo(fanPoly[sIdx][0], padding.top + chartH);
       ctx.closePath();
       ctx.fillStyle = grad;
       ctx.fill();
     }
-    for (var m = 0; m < fanPath.length; m++) {
-      if (fanPath[m] === null) {
-        if (segStart >= 0) fillArea(segStart, m - 1);
-        segStart = -1;
-      } else if (segStart < 0) {
-        segStart = m;
+
+    var segHead = -1;
+    for (var m = 0; m < fanPoly.length; m++) {
+      if (fanPoly[m] === null) {
+        if (segHead >= 0) renderFanGradient(segHead, m - 1);
+        segHead = -1;
+      } else if (segHead < 0) {
+        segHead = m;
       }
     }
-    if (segStart >= 0) fillArea(segStart, fanPath.length - 1);
+    if (segHead >= 0) renderFanGradient(segHead, fanPoly.length - 1);
 
-    function line(key, color, width, dashed) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
+    function renderLine(field, strokeColor, lineWidth, isDashed) {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = lineWidth;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      if (dashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
+      if (isDashed) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
       ctx.beginPath();
-      var open = false;
-      for (var k = 0; k < pts.length; k++) {
-        var v = pts[k][key];
-        if (v === null) { open = false; continue; }
-        var px = xOf(pts[k].ts), py = yOf(v);
-        if (!open) { ctx.moveTo(px, py); open = true; } else { ctx.lineTo(px, py); }
+      var hasStarted = false;
+      for (var idx = 0; idx < points.length; idx++) {
+        var v = points[idx][field];
+        if (v === null) { hasStarted = false; continue; }
+        var px = getX(points[idx].ts);
+        var py = getY(v);
+        if (!hasStarted) {
+          ctx.moveTo(px, py);
+          hasStarted = true;
+        } else {
+          ctx.lineTo(px, py);
+        }
       }
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    line('fan', c.fan, 2);
-    line('tgt', c.target, 1.8, true);
-    line('gpu', c.gpu, 1.8);
-    line('cpu', c.cpu, 2);
+    renderLine('fan', cFan, 1.8, false);
+    renderLine('tgt', cTarget, 1.6, true);
+    renderLine('gpu', cGpu, 1.8, false);
+    renderLine('cpu', cCpu, 1.8, false);
 
-    // 时间刻度
-    var ticks = 5;
-    var longRange = minutesNow() > 60;
-    ctx.fillStyle = c.muted;
-    ctx.font = '11px ' + FONT;
-    ctx.textBaseline = 'top';
-    for (var t = 0; t <= ticks; t++) {
-      var ts = t0 + (t1 - t0) * t / ticks;
-      var px = pad.l + plotW * t / ticks;
-      ctx.textAlign = t === 0 ? 'left' : (t === ticks ? 'right' : 'center');
-      ctx.fillText(longRange ? hhmm(ts) : hhmmss(ts), px, pad.t + plotH + 8);
+    if (state.historyHoverIndex >= 0 && state.historyHoverIndex < points.length) {
+      var hPoint = points[state.historyHoverIndex];
+      var hx = getX(hPoint.ts);
+
+      ctx.save();
+      ctx.strokeStyle = cMuted;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(hx, padding.top);
+      ctx.lineTo(hx, padding.top + chartH);
+      ctx.stroke();
+      ctx.restore();
+
+      var ttLines = [
+        formatTimeHHMMSS(hPoint.ts),
+        'CPU: ' + (hPoint.cpu !== null ? Math.round(hPoint.cpu) + '°C' : '--'),
+        'GPU: ' + (hPoint.gpu !== null ? Math.round(hPoint.gpu) + '°C' : '--'),
+        '目标: ' + (hPoint.tgt !== null ? Math.round(hPoint.tgt) + '°C' : '--'),
+        '风扇: ' + (hPoint.fan !== null ? Math.round(hPoint.fan) + '%' : '--')
+      ];
+
+      ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      var ttW = 96;
+      var ttH = ttLines.length * 15 + 6;
+      var ttX = hx + 8;
+      if (ttX + ttW > padding.left + chartW) ttX = hx - ttW - 8;
+      var ttY = padding.top + 8;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(ttX, ttY, ttW, ttH, 5) : ctx.rect(ttX, ttY, ttW, ttH);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.stroke();
+
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      for (var l = 0; l < ttLines.length; l++) {
+        if (l === 0) ctx.fillStyle = '#94a3b8';
+        else if (l === 1) ctx.fillStyle = cCpu;
+        else if (l === 2) ctx.fillStyle = cGpu;
+        else if (l === 3) ctx.fillStyle = cTarget;
+        else if (l === 4) ctx.fillStyle = cFan;
+        ctx.fillText(ttLines[l], ttX + 6, ttY + 4 + l * 15);
+      }
     }
 
-    $('chartMeta').textContent = '样本 ' + raw.length + ' · 显示 ' + minutesNow() + ' 分钟';
+    var tickCount = 4;
+    var isLongDuration = getCurrentMinutes() > 60;
+    ctx.fillStyle = cMuted;
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textBaseline = 'top';
+
+    for (var t = 0; t <= tickCount; t++) {
+      var tsVal = tMin + (tMax - tMin) * (t / tickCount);
+      var pxVal = padding.left + chartW * (t / tickCount);
+      ctx.textAlign = t === 0 ? 'left' : (t === tickCount ? 'right' : 'center');
+      ctx.fillText(isLongDuration ? formatTimeHHMM(tsVal) : formatTimeHHMMSS(tsVal), pxVal, padding.top + chartH + 6);
+    }
+
+    $('chartMeta').textContent = '总计 ' + rawHistory.length + ' 样本 · 回溯 ' + getCurrentMinutes() + ' 分钟';
   }
 
-  // ---------- 曲线图表 ----------
-  var curveRaf = 0;
-  function scheduleCurveDraw() {
-    if (curveRaf) return;
-    curveRaf = requestAnimationFrame(function () {
-      curveRaf = 0;
-      drawCurve();
+  var curveChartAnimId = 0;
+  function requestCurveChartDraw() {
+    if (curveChartAnimId) return;
+    curveChartAnimId = requestAnimationFrame(function () {
+      curveChartAnimId = 0;
+      drawCurveChart();
     });
   }
 
-  function curveGeom(canvas) {
-    var fit = fitCanvas(canvas);
-    var pad = { l: 38, r: 14, t: 22, b: 24 };
-    var plotW = Math.max(10, fit.w - pad.l - pad.r);
-    var plotH = Math.max(10, fit.h - pad.t - pad.b);
+  function getCurveGeom(canvas) {
+    var prep = prepareCanvasContext(canvas);
+    var padding = { left: 34, right: 14, top: 18, bottom: 22 };
+    var chartW = Math.max(10, prep.width - padding.left - padding.right);
+    var chartH = Math.max(10, prep.height - padding.top - padding.bottom);
     return {
-      ctx: fit.ctx, w: fit.w, h: fit.h, pad: pad, plotW: plotW, plotH: plotH,
-      x: function (temp) {
-        return pad.l + (clamp(temp, CURVE_MIN_T, CURVE_MAX_T) - CURVE_MIN_T) / (CURVE_MAX_T - CURVE_MIN_T) * plotW;
+      ctx: prep.ctx,
+      w: prep.width,
+      h: prep.height,
+      padding: padding,
+      chartW: chartW,
+      chartH: chartH,
+      xFromTemp: function (temp) {
+        return padding.left + (clamp(temp, CURVE_MIN_T, CURVE_MAX_T) - CURVE_MIN_T) / (CURVE_MAX_T - CURVE_MIN_T) * chartW;
       },
-      y: function (speed) {
-        return pad.t + plotH - (clamp(speed, CURVE_MIN_S, CURVE_MAX_S) - CURVE_MIN_S) / (CURVE_MAX_S - CURVE_MIN_S) * plotH;
+      yFromSpeed: function (speed) {
+        return padding.top + chartH - (clamp(speed, CURVE_MIN_S, CURVE_MAX_S) - CURVE_MIN_S) / (CURVE_MAX_S - CURVE_MIN_S) * chartH;
       }
     };
   }
 
-  function fmtPoint(v) {
+  function formatPointDisplay(v) {
     var n = Number(v);
     return Number.isInteger(n) ? String(n) : round1(n).toFixed(1);
   }
 
-  function drawCurve() {
+  function drawCurveChart() {
     var canvas = $('curveChart');
     if (!canvas) return;
-    var g = curveGeom(canvas);
-    var ctx = g.ctx, a = colors();
-    ctx.clearRect(0, 0, g.w, g.h);
-    ctx.font = '11px ' + FONT;
 
-    // 网格
-    ctx.strokeStyle = a.grid;
+    var g = getCurveGeom(canvas);
+    var ctx = g.ctx;
+
+    var cBorder = getCssColor('--border');
+    var cMuted = getCssColor('--text-muted');
+    var cText = getCssColor('--text-main');
+    var cSurface = getCssColor('--surface');
+    var cAccent = getCssColor('--accent');
+    var cTarget = getCssColor('--target');
+
+    ctx.clearRect(0, 0, g.w, g.h);
+    ctx.font = '10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+    ctx.strokeStyle = cBorder;
     ctx.lineWidth = 1;
-    ctx.fillStyle = a.muted;
+    ctx.fillStyle = cMuted;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     for (var s = 0; s <= 100; s += 20) {
-      var gy = g.y(s);
+      var gy = g.yFromSpeed(s);
       ctx.beginPath();
-      ctx.moveTo(g.pad.l, gy);
-      ctx.lineTo(g.pad.l + g.plotW, gy);
+      ctx.moveTo(g.padding.left, gy);
+      ctx.lineTo(g.padding.left + g.chartW, gy);
       ctx.stroke();
-      ctx.fillText(s + '%', g.pad.l - 6, gy);
+      ctx.fillText(s + '%', g.padding.left - 5, gy);
     }
+
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     for (var t = CURVE_MIN_T; t <= CURVE_MAX_T; t += 10) {
-      var gx = g.x(t);
+      var gx = g.xFromTemp(t);
       ctx.beginPath();
-      ctx.moveTo(gx, g.pad.t);
-      ctx.lineTo(gx, g.pad.t + g.plotH);
+      ctx.moveTo(gx, g.padding.top);
+      ctx.lineTo(gx, g.padding.top + g.chartH);
       ctx.stroke();
-      ctx.fillText(t + '°', gx, g.pad.t + g.plotH + 7);
+      ctx.fillText(t + '°', gx, g.padding.top + g.chartH + 6);
     }
 
-    var curve = activeCurve();
+    var curve = getActiveCurve();
     if (!curve.length) {
-      ctx.fillStyle = a.muted;
+      ctx.fillStyle = cMuted;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = '13px ' + FONT;
-      ctx.fillText('暂无曲线数据', g.pad.l + g.plotW / 2, g.pad.t + g.plotH / 2);
+      ctx.fillText('暂无有效曲线点', g.padding.left + g.chartW / 2, g.padding.top + g.chartH / 2);
       return;
     }
 
-    // 当前控制温度参考线
-    var now = app.state && app.state.latest ? numOrNull(app.state.latest.target_temp) : null;
-    if (now !== null) {
-      var nx = g.x(now);
+    var currentTargetTemp = state.data && state.data.latest ? asNumOrNull(state.data.latest.target_temp) : null;
+    if (currentTargetTemp !== null) {
+      var curX = g.xFromTemp(currentTargetTemp);
       ctx.save();
-      ctx.strokeStyle = a.target;
+      ctx.strokeStyle = cTarget;
       ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 4]);
+      ctx.setLineDash([4, 3]);
       ctx.beginPath();
-      ctx.moveTo(nx, g.pad.t);
-      ctx.lineTo(nx, g.pad.t + g.plotH);
+      ctx.moveTo(curX, g.padding.top);
+      ctx.lineTo(curX, g.padding.top + g.chartH);
       ctx.stroke();
       ctx.restore();
-      ctx.fillStyle = a.target;
-      ctx.font = '10.5px ' + FONT;
-      ctx.textAlign = nx > g.w - 60 ? 'right' : 'left';
+
+      ctx.fillStyle = cTarget;
+      ctx.font = '9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = curX > g.w - 60 ? 'right' : 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('当前 ' + Math.round(now) + '°', nx + (nx > g.w - 60 ? -5 : 5), g.pad.t + 2);
+      ctx.fillText('当前 ' + Math.round(currentTargetTemp) + '°C', curX + (curX > g.w - 60 ? -5 : 5), g.padding.top + 2);
     }
 
-    // 曲线与面积
     ctx.beginPath();
     for (var i = 0; i < curve.length; i++) {
-      var px = g.x(curve[i][0]), py = g.y(curve[i][1]);
+      var px = g.xFromTemp(curve[i][0]);
+      var py = g.yFromSpeed(curve[i][1]);
       if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
-    var baseY = g.pad.t + g.plotH;
-    ctx.lineTo(g.x(curve[curve.length - 1][0]), baseY);
-    ctx.lineTo(g.x(curve[0][0]), baseY);
+    var baseBottom = g.padding.top + g.chartH;
+    ctx.lineTo(g.xFromTemp(curve[curve.length - 1][0]), baseBottom);
+    ctx.lineTo(g.xFromTemp(curve[0][0]), baseBottom);
     ctx.closePath();
-    var grad = ctx.createLinearGradient(0, g.pad.t, 0, baseY);
-    grad.addColorStop(0, 'rgba(47,91,255,.20)');
-    grad.addColorStop(1, 'rgba(47,91,255,0)');
-    ctx.fillStyle = grad;
+
+    var curveGrad = ctx.createLinearGradient(0, g.padding.top, 0, baseBottom);
+    curveGrad.addColorStop(0, 'rgba(37, 99, 235, 0.22)');
+    curveGrad.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
+    ctx.fillStyle = curveGrad;
     ctx.fill();
 
     ctx.beginPath();
     for (var k = 0; k < curve.length; k++) {
-      var qx = g.x(curve[k][0]), qy = g.y(curve[k][1]);
-      if (k === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy);
+      var kx = g.xFromTemp(curve[k][0]);
+      var ky = g.yFromSpeed(curve[k][1]);
+      if (k === 0) ctx.moveTo(kx, ky); else ctx.lineTo(kx, ky);
     }
-    ctx.strokeStyle = a.accent;
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = cAccent;
+    ctx.lineWidth = 2.2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    if (app.curveLocked) ctx.setLineDash([6, 4]);
+    if (state.curveIsLocked) ctx.setLineDash([5, 3]);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 控制点
     for (var n = 0; n < curve.length; n++) {
-      var cx = g.x(curve[n][0]), cy = g.y(curve[n][1]);
-      var active = n === app.dragIndex || n === app.hoverIndex;
+      var cx = g.xFromTemp(curve[n][0]);
+      var cy = g.yFromSpeed(curve[n][1]);
+      var isHighlighted = (n === state.dragNodeIndex || n === state.hoverNodeIndex);
+
       ctx.beginPath();
-      ctx.arc(cx, cy, active ? 8 : 6, 0, Math.PI * 2);
-      ctx.fillStyle = a.accent;
+      ctx.arc(cx, cy, isHighlighted ? 7 : 5, 0, Math.PI * 2);
+      ctx.fillStyle = isHighlighted ? '#ffffff' : cAccent;
       ctx.fill();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = a.surface;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isHighlighted ? cAccent : cSurface;
       ctx.stroke();
 
-      var label = fmtPoint(curve[n][0]) + '° / ' + fmtPoint(curve[n][1]) + '%';
-      ctx.font = '600 11px ' + FONT;
-      var above = cy > g.pad.t + 20;
-      ctx.fillStyle = a.text;
+      var tagText = formatPointDisplay(curve[n][0]) + '°/' + formatPointDisplay(curve[n][1]) + '%';
+      ctx.font = '600 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      var isAbove = cy > g.padding.top + 18;
+      ctx.fillStyle = cText;
       ctx.textAlign = 'center';
-      ctx.textBaseline = above ? 'bottom' : 'top';
-      var ly = above ? cy - 13 : cy + 13;
-      // 贴边的标签向内收，避免被裁掉
-      var half = ctx.measureText(label).width / 2;
-      ctx.fillText(label, clamp(cx, g.pad.l + half, g.pad.l + g.plotW - half), ly);
+      ctx.textBaseline = isAbove ? 'bottom' : 'top';
+
+      var textY = isAbove ? cy - 8 : cy + 8;
+      var textHalfW = ctx.measureText(tagText).width / 2;
+      ctx.fillText(tagText, clamp(cx, g.padding.left + textHalfW, g.padding.left + g.chartW - textHalfW), textY);
     }
   }
 
-  // ---------- 曲线节点表格 ----------
-  function buildCurveGrid() {
-    var grid = $('curveGrid');
-    var curve = app.curve || [];
-    if (grid.children.length === curve.length) return;
-    grid.textContent = '';
-    for (var i = 0; i < curve.length; i++) {
-      var node = document.createElement('div');
-      node.className = 'node';
+  function syncCurveGrid() {
+    var container = $('curveGrid');
+    var curve = state.curveWorkingCopy || [];
+    if (container.children.length !== curve.length) {
+      container.textContent = '';
+      for (var i = 0; i < curve.length; i++) {
+        var card = document.createElement('div');
+        card.className = 'node';
 
-      var title = document.createElement('span');
-      title.className = 'node-title';
-      title.textContent = '节点 ' + (i + 1);
-      node.appendChild(title);
+        var head = document.createElement('span');
+        head.className = 'node-title';
+        head.textContent = '节点 ' + (i + 1);
+        card.appendChild(head);
 
-      node.appendChild(makeNodeField(i, 0, 'temp', '°C', 30, 100));
-      node.appendChild(makeNodeField(i, 1, 'speed', '%', 0, 100));
-      grid.appendChild(node);
+        var tempWrap = document.createElement('label');
+        tempWrap.className = 'node-field temp';
+        var tempInp = document.createElement('input');
+        tempInp.type = 'number';
+        tempInp.min = '30';
+        tempInp.max = '100';
+        tempInp.step = '0.5';
+        tempInp.setAttribute('data-i', String(i));
+        tempInp.setAttribute('data-axis', '0');
+        tempInp.setAttribute('aria-label', '节点 ' + (i + 1) + ' 温度');
+        var tempUnit = document.createElement('em');
+        tempUnit.textContent = '°C';
+        tempWrap.appendChild(tempInp);
+        tempWrap.appendChild(tempUnit);
+        card.appendChild(tempWrap);
+
+        var speedWrap = document.createElement('label');
+        speedWrap.className = 'node-field speed';
+        var speedInp = document.createElement('input');
+        speedInp.type = 'number';
+        speedInp.min = '0';
+        speedInp.max = '100';
+        speedInp.step = '1';
+        speedInp.setAttribute('data-i', String(i));
+        speedInp.setAttribute('data-axis', '1');
+        speedInp.setAttribute('aria-label', '节点 ' + (i + 1) + ' 转速百分比');
+        var speedUnit = document.createElement('em');
+        speedUnit.textContent = '%';
+        speedWrap.appendChild(speedInp);
+        speedWrap.appendChild(speedUnit);
+        card.appendChild(speedWrap);
+
+        container.appendChild(card);
+      }
     }
-  }
 
-  function makeNodeField(index, axis, cls, unit, min, max) {
-    var wrap = document.createElement('label');
-    wrap.className = 'node-field ' + cls;
-    var input = document.createElement('input');
-    input.type = 'number';
-    input.setAttribute('data-i', String(index));
-    input.setAttribute('data-axis', String(axis));
-    input.min = String(min);
-    input.max = String(max);
-    input.step = axis === 0 ? '0.5' : '1';
-    input.setAttribute('inputmode', 'decimal');
-    input.setAttribute('aria-label', '节点 ' + (index + 1) + (axis === 0 ? ' 温度' : ' 百分比'));
-    var em = document.createElement('em');
-    em.textContent = unit;
-    wrap.appendChild(input);
-    wrap.appendChild(em);
-    return wrap;
-  }
-
-  function updateCurveInputs() {
-    var grid = $('curveGrid');
-    var curve = app.curve || [];
-    for (var i = 0; i < curve.length; i++) {
-      var node = grid.children[i];
-      if (!node) continue;
-      var inputs = node.querySelectorAll('input');
+    for (var j = 0; j < curve.length; j++) {
+      var cNode = container.children[j];
+      if (!cNode) continue;
+      cNode.classList.toggle('active', j === state.dragNodeIndex);
+      var inputs = cNode.querySelectorAll('input');
       for (var k = 0; k < inputs.length; k++) {
         var inp = inputs[k];
+        inp.disabled = state.curveIsLocked;
         if (inp === document.activeElement) continue;
         var axis = Number(inp.getAttribute('data-axis'));
-        inp.value = fmtPoint(curve[i][axis]);
+        inp.value = formatPointDisplay(curve[j][axis]);
       }
-      node.classList.toggle('active', i === app.dragIndex);
     }
-    grid.querySelectorAll('input').forEach(function (inp) {
-      inp.disabled = app.curveLocked;
-    });
   }
 
-  function syncCurveForm() {
-    buildCurveGrid();
-    updateCurveInputs();
-    scheduleCurveDraw();
-  }
+  function updateCurveLockState(isLocked) {
+    state.curveIsLocked = !!isLocked;
+    $('curveLock').hidden = !isLocked;
+    $('curveNote').hidden = !isLocked;
 
-  function updateCurveLock(locked) {
-    app.curveLocked = !!locked;
-    $('curveLock').hidden = !locked;
-    $('curveNote').hidden = !locked;
-    var cv = $('curveChart');
-    cv.classList.toggle('locked', !!locked);
-    if (locked) {
-      app.dragIndex = -1;
-      app.hoverIndex = -1;
+    var chartEl = $('curveChart');
+    chartEl.classList.toggle('locked', !!isLocked);
+    if (isLocked) {
+      state.dragNodeIndex = -1;
+      state.hoverNodeIndex = -1;
     }
-    var tag = $('curveState');
-    tag.textContent = locked ? '未参与调速' : '曲线生效中';
-    tag.className = 'tag ' + (locked ? 'builtin' : 'active');
-    updateCurveInputs();
-    scheduleCurveDraw();
+
+    var badge = $('curveState');
+    badge.textContent = isLocked ? '未参与调速' : '曲线生效中';
+    badge.className = 'tag ' + (isLocked ? 'builtin' : 'active');
+
+    syncCurveGrid();
+    requestCurveChartDraw();
   }
 
-  function onNodeChange(inp) {
-    if (app.curveLocked) { syncCurveForm(); return; }
+  function handleNodeInputChange(inp) {
+    if (state.curveIsLocked) { syncCurveGrid(); return; }
     var i = Number(inp.getAttribute('data-i'));
     var axis = Number(inp.getAttribute('data-axis'));
-    var point = app.curve[i];
-    if (!point) return;
-    var v = parseFloat(inp.value);
-    if (!isFinite(v)) { updateCurveInputs(); return; }
+    var pt = state.curveWorkingCopy[i];
+    if (!pt) return;
+
+    var val = parseFloat(inp.value);
+    if (!isFinite(val)) { syncCurveGrid(); return; }
+
     if (axis === 0) {
-      var lo = i > 0 ? app.curve[i - 1][0] + 0.5 : CURVE_MIN_T;
-      var hi = i < app.curve.length - 1 ? app.curve[i + 1][0] - 0.5 : CURVE_MAX_T;
-      point[0] = clamp(round1(v), lo, hi);
-      inp.value = fmtPoint(point[0]);
+      var minBound = i > 0 ? state.curveWorkingCopy[i - 1][0] + 0.5 : CURVE_MIN_T;
+      var maxBound = i < state.curveWorkingCopy.length - 1 ? state.curveWorkingCopy[i + 1][0] - 0.5 : CURVE_MAX_T;
+      pt[0] = clamp(round1(val), minBound, maxBound);
+      inp.value = formatPointDisplay(pt[0]);
     } else {
-      point[1] = clamp(round1(v), CURVE_MIN_S, CURVE_MAX_S);
-      inp.value = fmtPoint(point[1]);
+      pt[1] = clamp(round1(val), CURVE_MIN_S, CURVE_MAX_S);
+      inp.value = formatPointDisplay(pt[1]);
     }
-    app.curveDirty = true;
-    scheduleCurveDraw();
-    queueCurveSave();
+
+    state.curveIsDirty = true;
+    requestCurveChartDraw();
+    debounceSaveCurve();
   }
 
-  // ---------- 曲线拖拽 ----------
-  function hitTest(ev) {
+  function testCurvePointHit(ev) {
     var canvas = $('curveChart');
-    var g = curveGeom(canvas);
+    var g = getCurveGeom(canvas);
     var rect = canvas.getBoundingClientRect();
     var mx = ev.clientX - rect.left;
     var my = ev.clientY - rect.top;
-    var best = -1, bestDist = 22;
-    for (var i = 0; i < app.curve.length; i++) {
-      var dx = mx - g.x(app.curve[i][0]);
-      var dy = my - g.y(app.curve[i][1]);
+    var bestIdx = -1, minDistance = 22;
+
+    for (var i = 0; i < state.curveWorkingCopy.length; i++) {
+      var dx = mx - g.xFromTemp(state.curveWorkingCopy[i][0]);
+      var dy = my - g.yFromSpeed(state.curveWorkingCopy[i][1]);
       var d = Math.sqrt(dx * dx + dy * dy);
-      if (d < bestDist) { bestDist = d; best = i; }
+      if (d < minDistance) {
+        minDistance = d;
+        bestIdx = i;
+      }
     }
-    return best;
+    return bestIdx;
   }
 
-  function onPointerDown(ev) {
-    if (app.curveLocked || !app.curve.length) return;
-    var idx = hitTest(ev);
+  function onCurvePointerDown(ev) {
+    if (state.curveIsLocked || !state.curveWorkingCopy.length) return;
+    var idx = testCurvePointHit(ev);
     if (idx < 0) return;
+
     ev.preventDefault();
-    app.dragIndex = idx;
-    app.hoverIndex = idx;
-    try { $('curveChart').setPointerCapture(ev.pointerId); } catch (e) { /* 忽略 */ }
-    updateCurveInputs();
-    scheduleCurveDraw();
+    state.dragNodeIndex = idx;
+    state.hoverNodeIndex = idx;
+    try { $('curveChart').setPointerCapture(ev.pointerId); } catch (e) {}
+    syncCurveGrid();
+    requestCurveChartDraw();
   }
 
-  function onPointerMove(ev) {
-    if (app.curveLocked) return;
-    if (app.dragIndex < 0) {
-      var idx = hitTest(ev);
-      if (idx !== app.hoverIndex) {
-        app.hoverIndex = idx;
-        $('curveChart').style.cursor = idx >= 0 ? 'grab' : 'crosshair';
-        scheduleCurveDraw();
+  function onCurvePointerMove(ev) {
+    if (state.curveIsLocked) return;
+
+    if (state.dragNodeIndex < 0) {
+      var hover = testCurvePointHit(ev);
+      if (hover !== state.hoverNodeIndex) {
+        state.hoverNodeIndex = hover;
+        $('curveChart').style.cursor = hover >= 0 ? 'grab' : 'crosshair';
+        requestCurveChartDraw();
       }
       return;
     }
-    if (app.dragIndex >= app.curve.length) return;
+
+    var i = state.dragNodeIndex;
+    if (i >= state.curveWorkingCopy.length) return;
+
     var canvas = $('curveChart');
-    var g = curveGeom(canvas);
+    var g = getCurveGeom(canvas);
     var rect = canvas.getBoundingClientRect();
-    var temp = CURVE_MIN_T + ((ev.clientX - rect.left) - g.pad.l) / g.plotW * (CURVE_MAX_T - CURVE_MIN_T);
-    var speed = CURVE_MAX_S - ((ev.clientY - rect.top) - g.pad.t) / g.plotH * (CURVE_MAX_S - CURVE_MIN_S);
 
-    var i = app.dragIndex;
-    var lo = i > 0 ? app.curve[i - 1][0] + 0.5 : CURVE_MIN_T;
-    var hi = i < app.curve.length - 1 ? app.curve[i + 1][0] - 0.5 : CURVE_MAX_T;
-    app.curve[i][0] = clamp(round1(temp), lo, hi);
-    app.curve[i][1] = clamp(round1(speed), CURVE_MIN_S, CURVE_MAX_S);
-    app.curveDirty = true;
+    var mouseX = ev.clientX - rect.left;
+    var mouseY = ev.clientY - rect.top;
 
-    var node = $('curveGrid').children[i];
-    if (node) node.classList.add('active');
-    updateCurveInputs();
-    scheduleCurveDraw();
+    var calcTemp = CURVE_MIN_T + ((mouseX - g.padding.left) / g.chartW) * (CURVE_MAX_T - CURVE_MIN_T);
+    var calcSpeed = CURVE_MAX_S - ((mouseY - g.padding.top) / g.chartH) * (CURVE_MAX_S - CURVE_MIN_S);
+
+    var minT = i > 0 ? state.curveWorkingCopy[i - 1][0] + 0.5 : CURVE_MIN_T;
+    var maxT = i < state.curveWorkingCopy.length - 1 ? state.curveWorkingCopy[i + 1][0] - 0.5 : CURVE_MAX_T;
+
+    state.curveWorkingCopy[i][0] = clamp(round1(calcTemp), minT, maxT);
+    state.curveWorkingCopy[i][1] = clamp(round1(calcSpeed), CURVE_MIN_S, CURVE_MAX_S);
+    state.curveIsDirty = true;
+
+    syncCurveGrid();
+    requestCurveChartDraw();
   }
 
-  function onPointerUp() {
-    if (app.dragIndex < 0) return;
-    app.dragIndex = -1;
-    updateCurveInputs();
-    scheduleCurveDraw();
-    saveCurveNow();
-  }
-
-  // ---------- 保存 ----------
-  function saveConfig(payload, label) {
-    if (!app.state) return Promise.resolve(false);
-    app.savePending++;
-    return enqueue(function () { return apiPost('/api/config', payload); })
-      .then(function () {
-        app.savePending--;
-        if (label) toast(label + '已保存');
-        return refresh();
-      }, function (err) {
-        app.savePending--;
-        toast(actionError(err), 'error');
-        // 失败时回到服务端状态，避免界面停留在未生效的数值
-        app.curveDirty = false;
-        refresh();
-        return false;
-      })
-      .then(function (value) { return value !== false; });
+  function onCurvePointerUp() {
+    if (state.dragNodeIndex < 0) return;
+    state.dragNodeIndex = -1;
+    syncCurveGrid();
+    requestCurveChartDraw();
+    commitCurveSave();
   }
 
   var curveSaveTimer = 0;
-  function queueCurveSave() {
+  function debounceSaveCurve() {
     clearTimeout(curveSaveTimer);
-    curveSaveTimer = setTimeout(saveCurveNow, 320);
+    curveSaveTimer = setTimeout(commitCurveSave, 350);
   }
 
-  function saveCurveNow() {
+  function commitCurveSave() {
     clearTimeout(curveSaveTimer);
     curveSaveTimer = 0;
-    if (!app.curveDirty || !app.state) return;
-    var points = app.curve.map(function (p) { return [round1(p[0]), round1(p[1])]; });
-    app.savePending++;
-    enqueue(function () { return apiPost('/api/config', { curve: points }); })
-      .then(function () {
-        app.curveDirty = false;
-        app.savePending--;
-        toast('曲线已保存');
-        refresh();
-      }, function (err) {
-        app.curveDirty = false;
-        app.savePending--;
-        toast(actionError(err), 'error');
-        refresh();
-      });
+    if (!state.curveIsDirty || !state.data) return;
+
+    var payloadPoints = state.curveWorkingCopy.map(function (p) {
+      return [round1(p[0]), round1(p[1])];
+    });
+
+    state.activeSaves++;
+    enqueueWrite(function () {
+      return apiPost('/api/config', { curve: payloadPoints });
+    }).then(function () {
+      state.curveIsDirty = false;
+      state.activeSaves--;
+      toast('风扇曲线已成功保存', 'ok');
+      refreshState();
+    }, function (err) {
+      state.curveIsDirty = false;
+      state.activeSaves--;
+      toast(actionError(err), 'error');
+      refreshState();
+    });
   }
 
-  // ---------- 预设挡位 ----------
-  function isPresetModified() {
-    var cfg = currentConfig();
+  function onHistoryPointerMove(ev) {
+    if (!state.data) return;
+    var canvas = $('historyChart');
+    var rect = canvas.getBoundingClientRect();
+    var mx = ev.clientX - rect.left;
+
+    var padding = { left: 34, right: 14 };
+    var chartW = rect.width - padding.left - padding.right;
+    if (mx < padding.left || mx > padding.left + chartW) {
+      if (state.historyHoverIndex !== -1) {
+        state.historyHoverIndex = -1;
+        requestHistoryChartDraw();
+      }
+      return;
+    }
+
+    var cutoffTime = Date.now() - getCurrentMinutes() * 60000;
+    var rawHistory = (state.data.history || []).filter(function (item) {
+      var t = parseTimestamp(item.time);
+      return isFinite(t) && t >= cutoffTime;
+    });
+    if (!rawHistory.length) return;
+
+    var points = decimateSamples(rawHistory, Math.max(90, Math.floor(chartW * 1.4)));
+    var ratio = (mx - padding.left) / chartW;
+    var targetIdx = clamp(Math.round(ratio * (points.length - 1)), 0, points.length - 1);
+
+    if (state.historyHoverIndex !== targetIdx) {
+      state.historyHoverIndex = targetIdx;
+      requestHistoryChartDraw();
+    }
+  }
+
+  function onHistoryPointerLeave() {
+    if (state.historyHoverIndex !== -1) {
+      state.historyHoverIndex = -1;
+      requestHistoryChartDraw();
+    }
+  }
+
+  function isCurrentPresetModified() {
+    var cfg = getCurrentConfig();
     if (!cfg) return false;
     var slot = cfg.presets && cfg.presets[cfg.active_preset];
     if (!slot) return false;
-    return !curveEqual(slot.curve, activeCurve()) || slot.strategy !== currentStrategy();
+    return !isCurveEqual(slot.curve, getActiveCurve()) || slot.strategy !== getCurrentStrategy();
   }
 
-  function renderPresets() {
-    var s = app.state;
-    var list = $('presetList');
-    if (!s || !list) return;
-    var cfg = s.config || {};
-    var presets = cfg.presets || {};
-    var active = cfg.active_preset;
-    var order = {};
-    (s.presets || []).forEach(function (p, i) { order[p.key] = i; });
-    var modified = isPresetModified();
+  function renderPresetList() {
+    var listContainer = $('presetList');
+    if (!state.data || !listContainer) return;
 
-    var keys = Object.keys(presets).sort(function (a, b) {
-      var ba = a in order ? 0 : 1;
-      var bb = b in order ? 0 : 1;
-      if (ba !== bb) return ba - bb;
-      if (ba === 0) return order[a] - order[b];
-      return a < b ? -1 : (a > b ? 1 : 0);
+    var cfg = state.data.config || {};
+    var presets = cfg.presets || {};
+    var activeKey = cfg.active_preset;
+    var builtinOrder = {};
+    (state.data.presets || []).forEach(function (p, idx) { builtinOrder[p.key] = idx; });
+    var modified = isCurrentPresetModified();
+
+    var sortedKeys = Object.keys(presets).sort(function (a, b) {
+      var aIsBuiltin = a in builtinOrder ? 0 : 1;
+      var bIsBuiltin = b in builtinOrder ? 0 : 1;
+      if (aIsBuiltin !== bIsBuiltin) return aIsBuiltin - bIsBuiltin;
+      if (aIsBuiltin === 0) return builtinOrder[a] - builtinOrder[b];
+      return a.localeCompare(b);
     });
 
-    var sig = keys.map(function (k) { return k + ':' + (presets[k].label || k); }).join('|')
-      + '#' + active + '#' + (modified ? 1 : 0);
-    if (sig === app.presetSig) return;
-    app.presetSig = sig;
+    var signature = sortedKeys.map(function (k) { return k + ':' + (presets[k].label || k); }).join('|')
+      + '#' + activeKey + '#' + (modified ? 1 : 0);
+    if (signature === state.presetListSig) return;
+    state.presetListSig = signature;
 
-    list.textContent = '';
-    keys.forEach(function (key) {
-      var preset = presets[key] || {};
-      var builtin = key in order;
-      var isActive = key === active;
+    listContainer.textContent = '';
+    sortedKeys.forEach(function (key) {
+      var item = presets[key] || {};
+      var isBuiltin = key in builtinOrder;
+      var isActive = (key === activeKey);
 
       var row = document.createElement('div');
       row.className = 'preset' + (isActive ? ' active' : '');
 
-      var main = document.createElement('button');
-      main.type = 'button';
-      main.className = 'preset-main';
-      main.title = '应用「' + (preset.label || key) + '」';
-      var name = document.createElement('span');
-      name.className = 'preset-name';
-      // 名称来自用户输入：只用 textContent，绝不拼接 HTML。
-      name.textContent = preset.label || key;
-      main.appendChild(name);
+      var clickBtn = document.createElement('button');
+      clickBtn.type = 'button';
+      clickBtn.className = 'preset-main';
+      clickBtn.title = '应用预设「' + (item.label || key) + '」';
+
+      var title = document.createElement('span');
+      title.className = 'preset-name';
+      title.textContent = item.label || key;
+      clickBtn.appendChild(title);
 
       if (isActive) {
-        var cur = document.createElement('span');
-        cur.className = 'tag active';
-        cur.textContent = '当前';
-        main.appendChild(cur);
+        var curBadge = document.createElement('span');
+        curBadge.className = 'tag active';
+        curBadge.textContent = '当前';
+        clickBtn.appendChild(curBadge);
       }
       if (isActive && modified) {
-        var mod = document.createElement('span');
-        mod.className = 'tag modified';
-        mod.textContent = '已修改';
-        main.appendChild(mod);
+        var modBadge = document.createElement('span');
+        modBadge.className = 'tag modified';
+        modBadge.textContent = '已修改';
+        clickBtn.appendChild(modBadge);
       }
-      if (!builtin) {
-        var cus = document.createElement('span');
-        cus.className = 'tag builtin';
-        cus.textContent = '自定义';
-        main.appendChild(cus);
+      if (!isBuiltin) {
+        var cusBadge = document.createElement('span');
+        cusBadge.className = 'tag builtin';
+        cusBadge.textContent = '自定义';
+        clickBtn.appendChild(cusBadge);
       }
-      main.addEventListener('click', function () { applyPreset(key); });
-      row.appendChild(main);
 
-      var acts = document.createElement('div');
-      acts.className = 'preset-acts';
+      clickBtn.addEventListener('click', function () {
+        applyPresetSlot(key);
+      });
+      row.appendChild(clickBtn);
+
+      var actions = document.createElement('div');
+      actions.className = 'preset-acts';
+
       if (isActive && modified) {
-        acts.appendChild(makePresetButton('保存', '', function () { presetAction('save', key); }));
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'btn small primary';
+        saveBtn.textContent = '保存';
+        saveBtn.title = '将当前曲线写回该挡位';
+        saveBtn.addEventListener('click', function () {
+          executePresetAction('save', key);
+        });
+        actions.appendChild(saveBtn);
       }
-      if (builtin) {
-        acts.appendChild(makePresetButton('恢复默认', '', function () {
-          if (!window.confirm('将挡位「' + (preset.label || key) + '」恢复为出厂参数？')) return;
-          presetAction('restore', key);
-        }));
+
+      if (isBuiltin) {
+        var restoreBtn = document.createElement('button');
+        restoreBtn.type = 'button';
+        restoreBtn.className = 'btn small';
+        restoreBtn.textContent = '恢复默认';
+        restoreBtn.addEventListener('click', function () {
+          if (!window.confirm('将内置挡位「' + (item.label || key) + '」恢复为出厂默认参数？')) return;
+          executePresetAction('restore', key);
+        });
+        actions.appendChild(restoreBtn);
       } else {
-        acts.appendChild(makePresetButton('删除', 'danger', function () {
-          if (!window.confirm('删除挡位「' + (preset.label || key) + '」？此操作不可撤销。')) return;
-          presetAction('delete', key);
-        }));
+        var deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn small danger';
+        deleteBtn.textContent = '删除';
+        deleteBtn.addEventListener('click', function () {
+          if (!window.confirm('确认删除自定义挡位「' + (item.label || key) + '」？')) return;
+          executePresetAction('delete', key);
+        });
+        actions.appendChild(deleteBtn);
       }
-      row.appendChild(acts);
-      list.appendChild(row);
+
+      row.appendChild(actions);
+      listContainer.appendChild(row);
     });
   }
 
-  function makePresetButton(label, extra, handler) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn small' + (extra ? ' ' + extra : '');
-    btn.textContent = label;
-    btn.addEventListener('click', handler);
-    return btn;
-  }
-
-  function applyPreset(key) {
-    var cfg = currentConfig();
+  function applyPresetSlot(key) {
+    var cfg = getCurrentConfig();
     if (!cfg) return;
-    // 已激活、未改动且已在曲线模式时重复应用没有意义；其余情况都交给后端处理
-    // （有改动时用于还原快照，目标温度模式下点击则会切回曲线模式）。
-    if (cfg.active_preset === key && !isPresetModified() && cfg.control_mode === 'curve') return;
-    presetAction('apply', key);
+    if (cfg.active_preset === key && !isCurrentPresetModified() && cfg.control_mode === 'curve') return;
+    executePresetAction('apply', key);
   }
 
-  function presetAction(action, key, label) {
+  function executePresetAction(action, key, label) {
     var payload = { action: action, key: key };
     if (label !== undefined) payload.label = label;
-    var verb = { apply: '已应用挡位', save: '挡位已保存', add: '挡位已创建', restore: '挡位已恢复默认', delete: '挡位已删除' }[action] || '挡位已更新';
-    app.presetSig = '';
-    return enqueue(function () { return apiPost('/api/preset', payload); })
-      .then(function () {
-        // apply 会让后端切回曲线模式，刷新后界面自动同步。
-        app.curveDirty = false;
-        toast(verb);
-        return refresh();
-      }, function (err) {
-        toast(actionError(err), 'error');
-        return false;
-      });
-  }
+    var actionLabels = {
+      apply: '已切换并应用挡位',
+      save: '挡位参数已保存写回',
+      add: '新自定义挡位已创建',
+      restore: '已恢复出厂参数',
+      delete: '自定义挡位已删除'
+    };
+    var msg = actionLabels[action] || '操作完成';
 
-  function showPresetAdd(show) {
-    $('presetAdd').hidden = !show;
-    if (show) {
-      $('presetName').value = '';
-      $('presetName').focus();
-    }
-  }
-
-  function createPreset() {
-    var raw = $('presetName').value;
-    var label = String(raw || '').trim();
-    if (!label) { toast('请输入挡位名称', 'error'); return; }
-    if (label.length > 40) label = label.slice(0, 40);
-    showPresetAdd(false);
-    presetAction('add', undefined, label);
-  }
-
-  // ---------- 各类控件 ----------
-  function updateModeVisual(mode) {
-    document.querySelectorAll('#modeSeg [data-mode]').forEach(function (btn) {
-      btn.setAttribute('aria-pressed', btn.getAttribute('data-mode') === mode ? 'true' : 'false');
+    state.presetListSig = '';
+    return enqueueWrite(function () {
+      return apiPost('/api/preset', payload);
+    }).then(function () {
+      state.curveIsDirty = false;
+      toast(msg, 'ok');
+      return refreshState();
+    }, function (err) {
+      toast(actionError(err), 'error');
+      return false;
     });
-    $('targetFields').hidden = mode !== 'target';
-    $('modeHint').textContent = mode === 'target'
-      ? '按目标温度反馈调节 EC 上限（取 CPU/GPU 较高值）：温度偏离越大，上限调整越快；曲线不参与。'
-      : '按曲线查表计算风扇上限，温度变化时按 1.5 °C 迟滞避免频繁抖动。';
-    updateCurveLock(mode === 'target');
   }
 
-  function changeMode(mode) {
-    if (!app.state || mode === currentMode()) return;
-    app.state.config.control_mode = mode;
-    updateModeVisual(mode);
-    saveConfig({ control_mode: mode }, mode === 'target' ? '目标温度模式' : '曲线模式');
+  function submitNewPreset() {
+    var input = $('presetName');
+    var label = String(input.value || '').trim();
+    if (!label) {
+      toast('请输入有效的挡位名称', 'error');
+      return;
+    }
+    if (label.length > 40) label = label.slice(0, 40);
+    $('presetAdd').hidden = true;
+    input.value = '';
+    executePresetAction('add', undefined, label);
   }
 
-  function changeStrategy() {
-    if (!app.state) return;
-    var value = $('strategy').value;
-    if (value === app.state.config.strategy) return;
-    saveConfig({ strategy: value }, '温度策略');
+  function postConfigUpdate(payload, successMsg) {
+    if (!state.data) return Promise.resolve(false);
+    state.activeSaves++;
+    return enqueueWrite(function () {
+      return apiPost('/api/config', payload);
+    }).then(function () {
+      state.activeSaves--;
+      if (successMsg) toast(successMsg, 'ok');
+      return refreshState();
+    }, function (err) {
+      state.activeSaves--;
+      toast(actionError(err), 'error');
+      state.curveIsDirty = false;
+      refreshState();
+      return false;
+    });
   }
 
-  function changeTargetField(id) {
-    if (!app.state) return;
-    var el = $(id);
-    var v = parseFloat(el.value);
-    if (!isFinite(v)) { syncForm(app.state); return; }
+  function switchControlMode(mode) {
+    if (!state.data || mode === (state.data.config.control_mode === 'target' ? 'target' : 'curve')) return;
+    state.data.config.control_mode = mode;
+    updateCurveLockState(mode === 'target');
+    postConfigUpdate({ control_mode: mode }, mode === 'target' ? '已切入目标温度模式' : '已切入曲线模式');
+  }
+
+  function submitStrategyChange() {
+    if (!state.data) return;
+    var val = $('strategy').value;
+    if (val === state.data.config.strategy) return;
+    postConfigUpdate({ strategy: val }, '温度合成策略已更新');
+  }
+
+  function submitTargetParamChange(fieldId) {
+    if (!state.data) return;
+    var inp = $(fieldId);
+    var v = parseFloat(inp.value);
+    if (!isFinite(v)) { syncFormControls(state.data); return; }
+
     var payload = {};
-    if (id === 'targetTemp') {
+    if (fieldId === 'targetTemp') {
       v = clamp(v, 40, 95);
       payload.target_temp = round1(v);
-    } else if (id === 'targetHysteresis') {
+    } else if (fieldId === 'targetHysteresis') {
       v = clamp(v, 1, 10);
       payload.target_hysteresis = round1(v);
     } else {
       v = clamp(v, 1, 20);
       payload.target_kp = round1(v);
     }
-    el.value = fmtPoint(v);
-    var cfg = app.state.config;
-    if (payload.target_temp !== undefined) cfg.target_temp = payload.target_temp;
-    if (payload.target_hysteresis !== undefined) cfg.target_hysteresis = payload.target_hysteresis;
-    if (payload.target_kp !== undefined) cfg.target_kp = payload.target_kp;
-    saveConfig(payload, '目标温度参数');
+    inp.value = formatPointDisplay(v);
+    postConfigUpdate(payload, '目标温度控制参数已保存');
   }
 
-  function saveManual(enabled) {
-    if (!app.state) return;
-    var speed = clamp(parseInt($('manualSpeed').value, 10) || 0, 0, 100);
-    app.state.config.manual_enabled = enabled;
-    app.state.config.manual_speed = speed;
+  function submitManualMode(enabled) {
+    if (!state.data) return;
+    var speed = clamp(parseInt($('manualSpeed').value, 10) || 50, 0, 100);
+    state.data.config.manual_enabled = enabled;
+    state.data.config.manual_speed = speed;
     $('manualSpeed').disabled = !enabled;
     $('manualPriority').hidden = !enabled;
-    saveConfig({ manual_enabled: enabled, manual_speed: speed }, enabled ? '手动模式已开启' : '手动模式已关闭');
+    postConfigUpdate({ manual_enabled: enabled, manual_speed: speed }, enabled ? '手动转速锁定已开启' : '手动转速锁定已关闭');
   }
 
-  function saveTheme(theme) {
-    if (!app.state) return;
-    applyTheme(theme);
-    app.state.config.theme = theme;
-    $('themeBtn').setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+  function submitThemeChange(theme) {
+    if (!state.data) return;
+    applyThemeVisual(theme);
+    state.data.config.theme = theme;
+    $('darkToggle').checked = (theme === 'dark');
     $('themeBtn').textContent = theme === 'dark' ? '浅色模式' : '深色模式';
-    $('darkToggle').checked = theme === 'dark';
-    saveConfig({ theme: theme }, '主题');
+    postConfigUpdate({ theme: theme }, '主题配置已保存');
   }
 
-  function saveRange(minutes) {
-    if (!app.state) return;
+  function submitTimeRangeChange(minutes) {
+    if (!state.data) return;
     var v = clamp(Math.round(minutes), 1, 480);
     $('minutes').value = String(v);
-    document.querySelectorAll('#rangeChips [data-min]').forEach(function (btn) {
+    document.querySelectorAll('#rangeChips button').forEach(function (btn) {
       btn.setAttribute('aria-pressed', btn.getAttribute('data-min') === String(v) ? 'true' : 'false');
     });
-    saveConfig({ time_entry: String(v) }, '历史范围');
+    postConfigUpdate({ time_entry: String(v) }, '历史回溯范围已保存');
   }
 
-  function toggleStartup() {
-    if (!app.state) return;
-    var next = !app.state.startup;
-    enqueue(function () { return apiPost('/api/startup', { enabled: next }); })
-      .then(function (res) {
-        toast(res && res.startup && !res.elevated
-          ? '已启用开机自启动，登录时会请求管理员权限（UAC）'
-          : (next ? '已启用开机自启动' : '已关闭开机自启动'));
-        refresh();
-      }, function (err) {
-        toast(actionError(err), 'error');
-      });
-  }
-
-  function applyBalancedCurve() {
-    var cfg = currentConfig();
-    var slot = cfg && cfg.presets && cfg.presets.balanced;
-    if (!slot) { toast('找不到「平衡」预设', 'error'); return; }
-    app.curve = cloneCurve(slot.curve);
-    app.curveDirty = true;
-    syncCurveForm();
-    saveCurveNow();
-  }
-
-  // ---------- 轮询 ----------
-  var refreshing=false, refreshQueued=false;
-
-  function refresh() {
-    if (refreshing) { refreshQueued = true; return Promise.resolve(); }
-    refreshing = true;
-    var minutes = minutesNow();
-    return apiGet('/api/state?minutes=' + minutes)
-      .then(function (s) {
-        app.failures = 0;
-        app.lastSuccess = Date.now();
-        var wasOffline = app.online === false;
-        app.online = true;
-        if (wasOffline) toast('连接已恢复');
-        render(s);
-      }, function (err) {
-        if (err && err.status) {
-          // 服务在线但接口报错：不标记离线，单独提示一次
-          app.online = true;
-          if (err.status === 403) toast('页面令牌已失效，请刷新页面', 'error');
-        } else {
-          app.failures++;
-          if (app.online !== false && app.failures >= 2) {
-            app.online = false;
-            toast('与本地服务的连接已断开，正在自动重试', 'error');
-          }
-        }
-        renderConn();
-      })
-      .then(function () {
-        refreshing = false;
-        if (refreshQueued) {
-          refreshQueued = false;
-          refresh();
-        }
-      });
-  }
-
-  function startPolling() {
-    refresh().then(function () {
-      setTimeout(startPolling, 1000);
+  function toggleSystemStartup() {
+    if (!state.data) return;
+    var next = !state.data.startup;
+    enqueueWrite(function () {
+      return apiPost('/api/startup', { enabled: next });
+    }).then(function (res) {
+      if (res && res.startup && !res.elevated) {
+        toast('已开启开机自启（将在登录时自动请求管理员提权）', 'ok');
+      } else {
+        toast(next ? '开机自启动已成功开启' : '开机自启动已关闭', 'ok');
+      }
+      refreshState();
+    }, function (err) {
+      toast(actionError(err), 'error');
     });
   }
 
-  // ---------- 事件绑定 ----------
-  function bindEvents() {
-    $('curveChart').addEventListener('pointerdown', onPointerDown);
-    $('curveChart').addEventListener('pointermove', onPointerMove);
-    $('curveChart').addEventListener('pointerup', onPointerUp);
-    $('curveChart').addEventListener('pointercancel', onPointerUp);
-    $('curveChart').addEventListener('pointerleave', function () {
-      if (app.dragIndex < 0 && app.hoverIndex !== -1) {
-        app.hoverIndex = -1;
-        scheduleCurveDraw();
+  function resetToBalancedCurve() {
+    var cfg = getCurrentConfig();
+    var balancedSlot = cfg && cfg.presets && cfg.presets.balanced;
+    if (!balancedSlot) {
+      toast('未找到系统内置平衡预设', 'error');
+      return;
+    }
+    state.curveWorkingCopy = cloneCurve(balancedSlot.curve);
+    state.curveIsDirty = true;
+    syncCurveGrid();
+    commitCurveSave();
+  }
+
+  var refreshing=false, isRefreshScheduled = false;
+
+  function refreshState() {
+    if (refreshing) {
+      isRefreshScheduled = true;
+      return Promise.resolve();
+    }
+    refreshing = true;
+    var minutes = getCurrentMinutes();
+
+    return apiGet('/api/state?minutes=' + minutes)
+      .then(function (data) {
+        state.failCount = 0;
+        state.lastSyncTime = Date.now();
+        var previouslyOffline = (state.isOnline === false);
+        state.isOnline = true;
+        if (previouslyOffline) toast('控制器连接已恢复', 'ok');
+        applyState(data);
+      }, function (err) {
+        if (err && err.status) {
+          state.isOnline = true;
+          if (err.status === 403) toast('页面凭证已失效，请刷新页面', 'error');
+        } else {
+          state.failCount++;
+          if (state.isOnline !== false && state.failCount >= 2) {
+            state.isOnline = false;
+            toast('与后台控制器断开连接，正在持续尝试重连…', 'error');
+          }
+        }
+        updateConnectionBadge();
+      })
+      .then(function () {
+        refreshing=false;
+        if (isRefreshScheduled) {
+          isRefreshScheduled = false;
+          refreshState();
+        }
+      });
+  }
+
+  function startPollingLoop() {
+    refreshState().then(function () {
+      setTimeout(startPollingLoop, 1000);
+    });
+  }
+
+  function initEventBindings() {
+    var curveCanvas = $('curveChart');
+    curveCanvas.addEventListener('pointerdown', onCurvePointerDown);
+    curveCanvas.addEventListener('pointermove', onCurvePointerMove);
+    curveCanvas.addEventListener('pointerup', onCurvePointerUp);
+    curveCanvas.addEventListener('pointercancel', onCurvePointerUp);
+    curveCanvas.addEventListener('pointerleave', function () {
+      if (state.dragNodeIndex < 0 && state.hoverNodeIndex !== -1) {
+        state.hoverNodeIndex = -1;
+        requestCurveChartDraw();
       }
     });
 
-    var grid = $('curveGrid');
-    grid.addEventListener('change', function (ev) {
-      var input = ev.target;
-      if (input && input.getAttribute && input.getAttribute('data-axis') !== null) onNodeChange(input);
+    var histCanvas = $('historyChart');
+    histCanvas.addEventListener('pointermove', onHistoryPointerMove);
+    histCanvas.addEventListener('pointerleave', onHistoryPointerLeave);
+
+    var nodesBox = $('curveGrid');
+    nodesBox.addEventListener('change', function (ev) {
+      var inp = ev.target;
+      if (inp && inp.getAttribute && inp.getAttribute('data-axis') !== null) {
+        handleNodeInputChange(inp);
+      }
     });
-    grid.addEventListener('keydown', function (ev) {
+    nodesBox.addEventListener('keydown', function (ev) {
       if (ev.key === 'Enter' && ev.target.getAttribute && ev.target.getAttribute('data-axis') !== null) {
         ev.preventDefault();
         ev.target.blur();
       }
     });
 
-    document.querySelectorAll('#modeSeg [data-mode]').forEach(function (btn) {
-      btn.addEventListener('click', function () { changeMode(btn.getAttribute('data-mode')); });
-    });
-
-    $('strategy').addEventListener('change', changeStrategy);
-
-    ['targetTemp', 'targetHysteresis', 'targetKP'].forEach(function (id) {
-      $(id).addEventListener('change', function () { changeTargetField(id); });
-      $(id).addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') { ev.preventDefault(); ev.target.blur(); }
+    document.querySelectorAll('#modeSeg button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        switchControlMode(btn.getAttribute('data-mode'));
       });
     });
 
-    $('manualEnabled').addEventListener('change', function () { saveManual($('manualEnabled').checked); });
-    $('manualSpeed').addEventListener('pointerdown', function () { app.manualDragging = true; });
+    $('strategy').addEventListener('change', submitStrategyChange);
+
+    ['targetTemp', 'targetHysteresis', 'targetKP'].forEach(function (id) {
+      var el = $(id);
+      el.addEventListener('change', function () { submitTargetParamChange(id); });
+      el.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); }
+      });
+    });
+
+    $('manualEnabled').addEventListener('change', function () {
+      submitManualMode($('manualEnabled').checked);
+    });
+    $('manualSpeed').addEventListener('pointerdown', function () {
+      state.isManualRangeDragging = true;
+    });
     $('manualSpeed').addEventListener('input', function () {
-      app.manualDragging = true;
+      state.isManualRangeDragging = true;
       $('manualValue').textContent = $('manualSpeed').value;
     });
     $('manualSpeed').addEventListener('change', function () {
-      app.manualDragging = false;
+      state.isManualRangeDragging = false;
       if (!$('manualEnabled').checked) return;
-      saveManual(true);
+      submitManualMode(true);
     });
-    $('manualSpeed').addEventListener('pointerup', function () { app.manualDragging = false; });
+    $('manualSpeed').addEventListener('pointerup', function () {
+      state.isManualRangeDragging = false;
+    });
 
-    document.querySelectorAll('#rangeChips [data-min]').forEach(function (btn) {
+    document.querySelectorAll('#rangeChips button').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var m = parseInt(btn.getAttribute('data-min'), 10);
-        if (isFinite(m)) saveRange(m);
+        var minVal = parseInt(btn.getAttribute('data-min'), 10);
+        if (isFinite(minVal)) submitTimeRangeChange(minVal);
       });
     });
     $('minutes').addEventListener('change', function () {
-      var v = parseInt($('minutes').value, 10);
-      if (isFinite(v)) saveRange(v); else syncForm(app.state);
+      var val = parseInt($('minutes').value, 10);
+      if (isFinite(val)) submitTimeRangeChange(val); else syncFormControls(state.data);
     });
 
     $('themeBtn').addEventListener('click', function () {
-      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      saveTheme(isDark ? 'light' : 'dark');
+      var isDarkNow = document.documentElement.getAttribute('data-theme') === 'dark';
+      submitThemeChange(isDarkNow ? 'light' : 'dark');
     });
     $('darkToggle').addEventListener('change', function () {
-      saveTheme($('darkToggle').checked ? 'dark' : 'light');
+      submitThemeChange($('darkToggle').checked ? 'dark' : 'light');
     });
 
-    $('startupBtn').addEventListener('click', toggleStartup);
-    $('curveReset').addEventListener('click', applyBalancedCurve);
+    $('startupBtn').addEventListener('click', toggleSystemStartup);
+    $('curveReset').addEventListener('click', resetToBalancedCurve);
 
-    $('addPresetBtn').addEventListener('click', function () { showPresetAdd($('presetAdd').hidden); });
-    $('presetAddOk').addEventListener('click', createPreset);
-    $('presetAddCancel').addEventListener('click', function () { showPresetAdd(false); });
+    $('addPresetBtn').addEventListener('click', function () {
+      var box = $('presetAdd');
+      box.hidden = !box.hidden;
+      if (!box.hidden) {
+        $('presetName').value = '';
+        $('presetName').focus();
+      }
+    });
+    $('presetAddOk').addEventListener('click', submitNewPreset);
+    $('presetAddCancel').addEventListener('click', function () {
+      $('presetAdd').hidden = true;
+    });
     $('presetName').addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter') { ev.preventDefault(); createPreset(); }
-      if (ev.key === 'Escape') { ev.preventDefault(); showPresetAdd(false); }
+      if (ev.key === 'Enter') { ev.preventDefault(); submitNewPreset(); }
+      if (ev.key === 'Escape') { ev.preventDefault(); $('presetAdd').hidden = true; }
     });
 
     var resizeTimer = 0;
     window.addEventListener('resize', function () {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(function () {
-        scheduleHistoryDraw();
-        scheduleCurveDraw();
+        requestHistoryChartDraw();
+        requestCurveChartDraw();
       }, 120);
     });
   }
 
-  function boot() {
+  function bootstrap() {
     try {
-      if (window.localStorage.getItem('ecc-theme-hint') === 'dark') applyTheme('dark');
-    } catch (e) { /* 忽略本地存储不可用 */ }
-    bindEvents();
-    renderConn();
-    // 先用健康检查判断服务是否可达，再进入状态轮询。
+      if (window.localStorage.getItem('ecc-theme-pref') === 'dark') {
+        applyThemeVisual('dark');
+      }
+    } catch (e) {}
+
+    initEventBindings();
+    updateConnectionBadge();
+
     apiGet('/api/health').then(function () {
-      startPolling();
+      startPollingLoop();
     }, function () {
-      app.online = false;
-      renderConn();
-      startPolling();
+      state.isOnline = false;
+      updateConnectionBadge();
+      startPollingLoop();
     });
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
+    document.addEventListener('DOMContentLoaded', bootstrap);
   } else {
-    boot();
+    bootstrap();
   }
 })();
 </script>
