@@ -4,17 +4,18 @@
   var root = document.documentElement;
   var themeButton = document.getElementById('themeToggle');
   var themeToggleText = document.getElementById('themeToggleText');
+  var themeIcon = document.getElementById('themeIcon');
   var shotButtons = Array.from(document.querySelectorAll('[data-shot]'));
   var heroShot = document.getElementById('heroShot');
 
   var shots = {
     light: {
       src: 'assets/dashboard-light.png',
-      alt: 'ECC Fan Controller 全新双擎工作台：左侧风扇阶梯曲线与5节点调音矩阵，右侧全景历史时序监控'
+      alt: 'ECC Fan Controller 本地 Web 控制台浅色界面：顶部实时温度与风扇上限遥测，下方左侧 5 点曲线编辑器与右侧时序监控图'
     },
     dark: {
       src: 'assets/dashboard-dark.png',
-      alt: 'ECC Fan Controller 全新双擎工作台深色界面：工业暗黑调色板，左右并排对称布局'
+      alt: 'ECC Fan Controller 本地 Web 控制台深色界面：石墨灰中性面板，左侧 5 点曲线编辑器与右侧实时时序监控图'
     }
   };
 
@@ -30,20 +31,30 @@
     });
   }
 
+  function updateThemeIcon(isDark) {
+    if (!themeIcon) return;
+    themeIcon.innerHTML = isDark
+      ? '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>'
+      : '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>';
+  }
+
   function setTheme(theme) {
-    root.setAttribute('data-theme', theme);
+    var isDark = theme === 'dark';
+    root.setAttribute('data-theme', isDark ? 'dark' : 'light');
     try {
-      localStorage.setItem('ecc-site-theme', theme);
+      localStorage.setItem('ecc-site-theme', isDark ? 'dark' : 'light');
     } catch (e) {}
 
     if (themeToggleText) {
-      themeToggleText.textContent = theme === 'dark' ? '浅色' : '深色';
+      themeToggleText.textContent = isDark ? '浅色' : '深色';
     }
+    updateThemeIcon(isDark);
+
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute('content', theme === 'dark' ? '#090d16' : '#ffffff');
+      meta.setAttribute('content', isDark ? '#141415' : '#fafafa');
     }
-    selectShot(theme);
+    selectShot(isDark ? 'dark' : 'light');
   }
 
   shotButtons.forEach(function (button) {
@@ -59,11 +70,9 @@
     });
   }
 
-  // 初始化当前主题
   var initialTheme = root.getAttribute('data-theme') || 'light';
   setTheme(initialTheme);
 
-  // 动态年份
   var yearEl = document.getElementById('year');
   if (yearEl) {
     yearEl.textContent = String(new Date().getFullYear());

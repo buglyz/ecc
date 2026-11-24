@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ECC Fan Controller — 笔记本 EC 风扇精准控制工具</title>
-<meta name="description" content="基于微软 WHCP 签名驱动与 Windows 原生 ACPI EC 端口的笔记本风扇调控神器。支持自定义 5 点曲线、自适应闭环目标温度模式、独立硬件看门狗与现代化 Web 控制台。">
+<title>ECC Fan Controller — Windows 笔记本 EC 寄存器风扇控制器</title>
+<meta name="description" content="面向 Windows 笔记本的本地 EC 寄存器风扇控制器。基于微软 WHCP 签名 PawnIO 驱动，支持 5 点温控曲线、闭环目标温度控制与 30 秒独立看门狗，无需关闭内存完整性。">
 <meta name="keywords" content="ECC, Fan Controller, 笔记本风扇控制, EC寄存器, PawnIO, 目标温度模式, 神舟, 蓝天模具">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#fafafa">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="https://buglyz.github.io/ecc/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="ECC Fan Controller — 笔记本 EC 风扇精准控制工具">
-<meta property="og:description" content="基于微软 WHCP 签名驱动的笔记本风扇控制工具。自定义曲线、自适应闭环目标温度控制、独立看门狗，免关闭内存完整性。">
+<meta property="og:title" content="ECC Fan Controller — Windows 笔记本 EC 寄存器风扇控制器">
+<meta property="og:description" content="基于微软 WHCP 签名 PawnIO 驱动的笔记本风扇控制工具。支持 5 点曲线、闭环目标温控与 30 秒独立看门狗，无需关闭内存完整性。">
 <meta property="og:url" content="https://buglyz.github.io/ecc/">
 <meta property="og:image" content="https://buglyz.github.io/ecc/assets/dashboard-light.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -31,12 +31,11 @@
 </head>
 <body>
 
-<!-- 页面顶栏 -->
 <header class="site-header">
   <div class="page header-inner">
     <a class="brand" href="#top">
       <span class="brand-logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="2.4"></circle>
           <path d="M12 9.6V3.6a3 3 0 0 1 3 3c0 2-1.5 3-1.5 3"></path>
           <path d="M14.4 12h6a3 3 0 0 1-3 3c-2 0-3-1.5-3-1.5"></path>
@@ -46,7 +45,8 @@
       </span>
       <span>ECC Fan Controller</span>
     </a>
-    <nav class="nav" aria-label="页面主导航">
+
+    <nav class="nav" aria-label="页面导航">
       <a href="#features">核心特性</a>
       <a href="#how">底层架构</a>
       <a href="#modes">调控模式</a>
@@ -54,182 +54,202 @@
       <a href="#cli">CLI 参数</a>
       <a href="#faq">常见问题</a>
     </nav>
-    <div class="header-links">
-      <a class="header-icon-link" href="https://github.com/buglyz/ecc" target="_blank" rel="noopener" title="查看 GitHub 仓库">
-        <span>GitHub</span>
-      </a>
-      <a class="header-icon-link" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener" title="获取最新发布版">
-        <span>Releases</span>
-      </a>
-      <button id="themeToggle" class="theme-pill-btn" type="button" aria-label="切换明暗色彩主题">
-        <span class="theme-icon" aria-hidden="true">🌓</span>
+
+    <div class="header-actions">
+      <a class="header-link" href="https://github.com/buglyz/ecc" target="_blank" rel="noopener">GitHub</a>
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="切换明暗主题">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
         <span id="themeToggleText">深色</span>
       </button>
+      <a class="nav-cta" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">下载 v2.0.0</a>
     </div>
   </div>
 </header>
 
 <main class="page" id="top">
-  <!-- Hero 英雄区 -->
-  <section class="hero-section">
-    <div class="hero-pill-badge">
-      <span class="badge-dot"></span>
-      <span>v2.0.0 架构升级 · 微软 WHCP 签名驱动 · 免关内存完整性</span>
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="hero-meta">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span>v2.0.0</span>
+        <span class="sep">·</span>
+        <span>Windows 10/11 x64</span>
+        <span class="sep">·</span>
+        <span>PawnIO WHCP 签名驱动</span>
+      </div>
+
+      <h1 class="hero-title">直接读写 EC 寄存器，<br>按你的规则控制笔记本风扇</h1>
+      <p class="hero-lead">面向蓝天与神舟模具的本地风扇控制器。支持 5 点阶梯曲线、闭环目标温控与 30 秒独立看门狗，单文件离线运行，无需关闭 Windows 内存完整性。</p>
+
+      <div class="hero-actions">
+        <a class="btn-hero primary" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          下载 v2.0.0 安装包
+        </a>
+        <a class="btn-hero secondary" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">
+          便携版 ZIP
+        </a>
+      </div>
     </div>
 
-    <h1 class="hero-title">精准掌控风扇，<br><span class="gradient-text">重塑极致温控与静音体验</span></h1>
-    <p class="hero-lead">专为 Windows 笔记本打造的高性能 EC（Embedded Controller）风扇控制器。支持自定义阶梯曲线、自适应闭环目标温度控制、独立分离看门狗守护，搭载现代化双擎控制台，纯 Go 单文件极速运行。</p>
-
-    <div class="hero-actions">
-      <a class="btn-hero primary" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-        下载 v2.0.0 安装包
-      </a>
-      <a class="btn-hero secondary" href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">
-        便携版 ZIP
-      </a>
-      <a class="btn-hero ghost" href="#how">
-        了解工作原理 →
-      </a>
-    </div>
-
-    <!-- 核心优势关键指标 -->
-    <div class="hero-highlights-row">
-      <div class="highlight-item">
-        <strong>PawnIO 2.x</strong>
-        <span>微软 WHCP 认证内核驱动</span>
+    <aside class="spec-panel" aria-label="核心运行规格">
+      <div class="spec-head">
+        <span>硬件接口规格</span>
+        <kbd class="reg-cap">ACPI EC</kbd>
       </div>
-      <div class="highlight-item">
-        <strong>HVCI 兼容</strong>
-        <span>无需关闭 Windows 内存完整性</span>
-      </div>
-      <div class="highlight-item">
-        <strong>双调控引擎</strong>
-        <span>5 点阶梯曲线 + 闭环目标温控</span>
-      </div>
-      <div class="highlight-item">
-        <strong>30s 看门狗</strong>
-        <span>异常自动退还 EC 控制权防过热</span>
-      </div>
-      <div class="highlight-item">
-        <strong>100% 离线</strong>
-        <span>本地运行 · 零网络请求与遥测</span>
-      </div>
-    </div>
+      <dl class="spec-list">
+        <div class="spec-row">
+          <dt>内核驱动</dt>
+          <dd>PawnIO 2.x (WHCP)</dd>
+        </div>
+        <div class="spec-row">
+          <dt>内存完整性</dt>
+          <dd>HVCI 兼容，无需关闭</dd>
+        </div>
+        <div class="spec-row">
+          <dt>转速上限寄存器</dt>
+          <dd><kbd class="reg-cap">0x2C</kbd> <kbd class="reg-cap">0x2D</kbd></dd>
+        </div>
+        <div class="spec-row">
+          <dt>退还主板固件</dt>
+          <dd><kbd class="reg-cap">0xFF</kbd></dd>
+        </div>
+        <div class="spec-row">
+          <dt>独立看门狗</dt>
+          <dd>30s 心跳超时自动释放</dd>
+        </div>
+        <div class="spec-row">
+          <dt>本地控制台</dt>
+          <dd><kbd class="reg-cap">127.0.0.1:8765</kbd></dd>
+        </div>
+      </dl>
+    </aside>
   </section>
 
-  <!-- 控制台实拍展示区 (支持切换深浅主题) -->
   <figure class="screenshot-showcase">
     <div class="showcase-header">
-      <div class="showcase-mac-dots" aria-hidden="true">
-        <span></span><span></span><span></span>
+      <div class="showcase-status">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span class="showcase-title">http://127.0.0.1:8765</span>
+        <span class="showcase-tag">ECC Web Console</span>
       </div>
-      <div class="showcase-title">ECC Web Console — 本地双擎控制中枢 (127.0.0.1:8765)</div>
-      <div class="showcase-switcher">
+      <div class="showcase-switcher" role="group" aria-label="控制台界面主题预览">
         <button class="shot-btn active" type="button" data-shot="light" aria-pressed="true">浅色界面</button>
         <button class="shot-btn" type="button" data-shot="dark" aria-pressed="false">深色界面</button>
       </div>
     </div>
     <div class="showcase-image-box">
-      <img id="heroShot" src="assets/dashboard-light.png" alt="ECC Fan Controller 全新双擎工作台：左侧风扇阶梯曲线与5节点调音矩阵，右侧全景历史时序监控" width="1440" height="900" loading="eager">
+      <img id="heroShot" src="assets/dashboard-light.png" alt="ECC Fan Controller 本地 Web 控制台界面：顶部 CPU、GPU、目标温度与风扇上限遥测，下方左侧 5 点曲线编辑器与右侧实时时序图" width="1440" height="900" loading="eager">
     </div>
     <figcaption class="showcase-caption">
-      <span>💡 提示：实机控制台已全新重构为并排双擎工作台，左右对称布局，首屏一览全览无须滚动</span>
+      纯 Go 标准库内嵌单页控制台，零外部依赖，支持 5 点曲线拖拽与 1–480 分钟历史时序回溯
     </figcaption>
   </figure>
 
-  <!-- 核心特性网格 -->
   <section class="section-block" id="features">
-    <div class="section-badge">Capabilities</div>
-    <h2 class="section-title">全方位硬件管控，兼顾极致静音与高能散热</h2>
-    <p class="section-desc">从底层内核驱动通信，到应用层闭环控制算法，打造安全可靠的温控系统。</p>
+    <div class="section-head">
+      <span class="section-index">01</span>
+      <div>
+        <h2 class="section-title">硬件级温控与多重安全保护</h2>
+        <p class="section-desc">从签名内核驱动到应用层闭环算法，所有读写都在本地完成，异常时自动退还主板固件控制权。</p>
+      </div>
+    </div>
 
     <div class="features-grid">
-      <article class="feature-card">
-        <div class="feature-icon-badge" style="--c-accent: var(--accent);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <article class="feature-item">
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <h3>微软 WHCP 签名内核驱动</h3>
-        <p>默认集成 <strong>PawnIO 2.x</strong> 官方驱动（<code>LpcACPIEC.bin</code>），通过微软官方 WHCP 认证并完美兼容 Windows 核心隔离/内存完整性（HVCI），告别传统 WinRing0 等驱动造成的安全拦截风险。</p>
+        <p>默认集成 PawnIO 2.x 驱动与 <kbd class="reg-cap">LpcACPIEC.bin</kbd> 模块，兼容 Windows 11 核心隔离与内存完整性（HVCI），不再依赖易被拦截的 WinRing0。</p>
       </article>
 
-      <article class="feature-card">
-        <div class="feature-icon-badge" style="--c-accent: var(--target);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <article class="feature-item">
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </div>
         <h3>自适应目标温度模式</h3>
-        <p>独创闭环比例控制律（KP + 动态死区 + 升降速率门限），设定如 66°C，控制器自动根据温差微调风扇上限，“放开快、收紧慢”，彻底消除风扇频繁拉高降下的恼人啸叫。</p>
+        <p>基于比例控制律、动态死区与非对称升降速率限制，设定如 <kbd class="reg-cap">66°C</kbd> 后自动微调风扇上限，升温放开快、降温收紧慢，减少转速来回拉扯。</p>
       </article>
 
-      <article class="feature-card">
-        <div class="feature-icon-badge" style="--c-accent: var(--cpu);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M19 9l-5 5-4-4-3 3"/></svg>
+      <article class="feature-item">
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M19 9l-5 5-4-4-3 3"/></svg>
         </div>
-        <h3>双向防交叉阶梯曲线</h3>
-        <p>5 控制点线性插值，支持 Canvas 画布拖拽圆点与调音台式输入框毫秒级双向同步。内置前后节点单调递增约束算法，杜绝温度节点交叉引起的逻辑错乱。</p>
+        <h3>双向同步 5 点曲线</h3>
+        <p>5 个温度—转速控制点分段线性插值，支持画布直接拖拽或输入框精确键入，内置单调递增约束，防止节点交叉。</p>
       </article>
 
-      <article class="feature-card">
-        <div class="feature-icon-badge" style="--c-accent: #10b981;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <article class="feature-item">
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
         </div>
-        <h3>双擎并排对称中控台</h3>
-        <p>全新重塑的并排双引擎 WebUI：左侧风扇调控核心中枢，右侧全景历史时序监控（1–480 分钟自适应抽样，零掉帧无卡顿），集成手动转速快速接管条。</p>
+        <h3>单屏并排本地控制台</h3>
+        <p>左侧曲线与挡位调控、右侧 1–480 分钟自适应抽样时序图，顶部集成实时遥测与手动锁定滑块，单屏即可完成常用操作。</p>
       </article>
 
-      <article class="feature-card">
-        <div class="feature-icon-badge" style="--c-accent: #f59e0b;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      <article class="feature-item">
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
-        <h3>独立硬件看门狗进程</h3>
-        <p>分离的独立守护进程监控主控心跳；若主程序发生崩溃、死锁或被强杀，看门狗在 30 秒心跳超时后自动将 EC 上限重置为 <code>0xFF</code>，无缝退还给主板固件，彻底杜绝过热隐患。</p>
+        <h3>独立看门狗守护进程</h3>
+        <p>主程序启动时同步拉起独立看门狗。若主进程崩溃、死锁或被强制结束，30 秒无心跳即向 EC 写入 <kbd class="reg-cap">0xFF</kbd> 交还主板固件控制。</p>
       </article>
 
-      <article class="feature-card">
-        <div class="feature-icon-badge" style="--c-accent: #8b5cf6;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <article class="feature-item">
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
         </div>
-        <h3>原厂控制权仲裁与高温保护</h3>
-        <p>感知原厂 ControlCenter 的 <code>FanControlStatus</code>，原厂激活时主动让渡。CPU≥92°C 或 GPU≥87°C 自动触发两阶段高温硬保护，交还主板全速排热。</p>
+        <h3>原厂仲裁与高温硬保护</h3>
+        <p>检测原厂 ControlCenter 的 <kbd class="reg-cap">FanControlStatus</kbd>，原厂接管时主动让渡；CPU ≥ 92°C 或 GPU ≥ 87°C 强制交还主板全速散热。</p>
       </article>
     </div>
   </section>
 
-  <!-- 工作原理与系统架构图 -->
   <section class="section-block" id="how">
-    <div class="section-badge">Architecture</div>
-    <h2 class="section-title">底层闭环工作原理与硬件交互架构</h2>
-    <p class="section-desc">每秒采样传感器温度，经由降噪平滑、策略合成与控制门控，安全写入 EC 嵌入式控制器。</p>
-
-    <div class="arch-flow-diagram" aria-label="ECC 控制循环架构流程图">
-      <div class="arch-step">
-        <div class="arch-step-head">1. 温度采集 (Sensors)</div>
-        <p>通过独立常驻进程桥接 <code>LibreHardwareMonitor</code> 与 <code>GmwmiCli</code> 只读读取 CPU 与 GPU 核心温度，具备指数退避防反复崩溃机制。</p>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-step">
-        <div class="arch-step-head">2. 策略合成与平滑</div>
-        <p>加权（0.7·CPU + 0.3·GPU）、取最大值或单路通道合成代表温度。周期内 6 次采样取算术均值，过滤瞬态脉冲噪声。</p>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-step">
-        <div class="arch-step-head">3. 调控算法计算</div>
-        <p><strong>曲线模式</strong>：5 控制点分段插值。<br><strong>目标模式</strong>：偏离误差 × KP 自适应计算，受限于 Min/Max 范围与升降步长限制。</p>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-step">
-        <div class="arch-step-head">4. 门控安全决策</div>
-        <p><strong>1.5°C 迟滞滤波</strong>过滤微小温差抖动；<strong>10 秒心跳机制</strong>防止固件收回控制权；高温硬保护阈值优先裁决。</p>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-step">
-        <div class="arch-step-head">5. PawnIO EC 写入</div>
-        <p>通过 WHCP 签名的 PawnIO 设备直接读写 EC 寄存器 <code>0x2C/0x2D</code>，并立即回读 <code>0x2E/0x2F</code> 与 RPM 实际占空比验证。</p>
+    <div class="section-head">
+      <span class="section-index">02</span>
+      <div>
+        <h2 class="section-title">闭环控制链路与 EC 寄存器映射</h2>
+        <p class="section-desc">每秒读取一次传感器温度，经平滑滤波、策略合成与门控判断后写入 EC 寄存器，并回读实际占空比核验。</p>
       </div>
     </div>
 
-    <!-- 寄存器地址映射表 -->
-    <h3 style="font-size: 16px; margin: 24px 0 12px; font-weight: 700;">EC 核心寄存器分布映射 (蓝天/神舟模具)</h3>
+    <ol class="arch-flow" aria-label="ECC 控制循环流程">
+      <li class="arch-step">
+        <span class="step-num">01</span>
+        <h3>温度采集</h3>
+        <p>常驻子进程桥接 <kbd class="reg-cap">LibreHardwareMonitor</kbd> 与 <kbd class="reg-cap">GmwmiCli</kbd> 只读采集 CPU 与 GPU 温度，失败时指数退避重启。</p>
+      </li>
+      <li class="arch-step">
+        <span class="step-num">02</span>
+        <h3>策略合成与平滑</h3>
+        <p>按加权（0.7·CPU + 0.3·GPU）、最大值或单路通道合成目标温度，每周期 6 次采样取算术均值以滤除瞬时毛刺。</p>
+      </li>
+      <li class="arch-step">
+        <span class="step-num">03</span>
+        <h3>目标上限计算</h3>
+        <p>曲线模式执行 5 点分段插值；目标模式按偏离误差与 KP 比例调节，并受 Min/Max 范围与步长限制约束。</p>
+      </li>
+      <li class="arch-step">
+        <span class="step-num">04</span>
+        <h3>门控安全裁决</h3>
+        <p><kbd class="reg-cap">1.5°C</kbd> 迟滞过滤微小抖动，<kbd class="reg-cap">10s</kbd> 心跳防止固件收回控制，高温硬保护阈值具备最高优先级。</p>
+      </li>
+      <li class="arch-step">
+        <span class="step-num">05</span>
+        <h3>PawnIO 写入与回读</h3>
+        <p>经 WHCP 签名 PawnIO 写入 <kbd class="reg-cap">0x2C</kbd> / <kbd class="reg-cap">0x2D</kbd>，同步读取 <kbd class="reg-cap">0x2E</kbd> / <kbd class="reg-cap">0x2F</kbd> 与 RPM 确认生效。</p>
+      </li>
+    </ol>
+
+    <h3 class="sub-heading">EC 核心寄存器分布（蓝天 / 神舟模具）</h3>
     <div class="table-card">
       <table>
         <thead>
@@ -237,285 +257,303 @@
             <th>寄存器地址</th>
             <th>物理功能</th>
             <th>读写属性</th>
-            <th>数值规范与工程意义</th>
+            <th>数值规范与说明</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><code>0x2C</code> / <code>0x2D</code></td>
+            <td><kbd class="reg-cap">0x2C</kbd> <kbd class="reg-cap">0x2D</kbd></td>
             <td>CPU / GPU 风扇占空比上限</td>
-            <td>可读可写</td>
-            <td>写入 <code>0x00</code>–<code>0x64</code> (0–100%) 为上限；写入 <code>0xFF</code> 立即交还主板 EC 原厂曲线接管</td>
+            <td>读写</td>
+            <td>写入 <kbd class="reg-cap">0x00</kbd>–<kbd class="reg-cap">0x64</kbd>（0–100%）设定上限；写入 <kbd class="reg-cap">0xFF</kbd> 立即交还主板固件自动曲线</td>
           </tr>
           <tr>
-            <td><code>0x2E</code> / <code>0x2F</code></td>
+            <td><kbd class="reg-cap">0x2E</kbd> <kbd class="reg-cap">0x2F</kbd></td>
             <td>EC 实际调控占空比</td>
             <td>只读</td>
-            <td>主板硬件实际执行的 PWM 占空比（EC 通常以约 10 秒时间常数的阻尼平滑逼近设定的上限值）</td>
+            <td>主板硬件当前执行的 PWM 占空比，EC 通常以约 10 秒阻尼平滑逼近设定上限</td>
           </tr>
           <tr>
-            <td><code>0x58</code> / <code>0x59</code></td>
-            <td>CPU / 拓展硬件传感器温度</td>
+            <td><kbd class="reg-cap">0x58</kbd> <kbd class="reg-cap">0x59</kbd></td>
+            <td>CPU / 扩展传感器温度</td>
             <td>只读</td>
-            <td>当前 EC 读取到的摄氏度整数，用于高温保护比对与回退传感器核验</td>
+            <td>EC 读取到的摄氏度整数，用于高温保护比对与传感器回退核验</td>
           </tr>
           <tr>
-            <td><code>0xB0</code> / <code>0xB1</code></td>
-            <td>Fan 1 实际物理转速 (RPM)</td>
+            <td><kbd class="reg-cap">0xB0</kbd> <kbd class="reg-cap">0xB1</kbd></td>
+            <td>Fan 1 实际转速（RPM）</td>
             <td>只读</td>
-            <td>小端 16 位无符号整数（低字节在 <code>0xB0</code>，高字节在 <code>0xB1</code>），反映真实转速</td>
+            <td>小端 16 位无符号整数（低字节 <kbd class="reg-cap">0xB0</kbd>，高字节 <kbd class="reg-cap">0xB1</kbd>）</td>
           </tr>
           <tr>
-            <td><code>0xB2</code> / <code>0xB3</code></td>
-            <td>Fan 2 实际物理转速 (RPM)</td>
+            <td><kbd class="reg-cap">0xB2</kbd> <kbd class="reg-cap">0xB3</kbd></td>
+            <td>Fan 2 实际转速（RPM）</td>
             <td>只读</td>
-            <td>小端 16 位无符号整数（低字节在 <code>0xB2</code>，高字节在 <code>0xB3</code>），反映真实转速</td>
+            <td>小端 16 位无符号整数（低字节 <kbd class="reg-cap">0xB2</kbd>，高字节 <kbd class="reg-cap">0xB3</kbd>）</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- 调控模式对比 -->
   <section class="section-block" id="modes">
-    <div class="section-badge">Comparison</div>
-    <h2 class="section-title">三大风扇调控模式深度对比</h2>
-    <p class="section-desc">根据日常办公、影音娱乐或重度游戏负载，自由选择最契合当前工况的控制策略。</p>
+    <div class="section-head">
+      <span class="section-index">03</span>
+      <div>
+        <h2 class="section-title">三种调控模式对比</h2>
+        <p class="section-desc">按办公静音、游戏稳温或临时强冷需求切换，所有模式均受高温硬保护兜底。</p>
+      </div>
+    </div>
 
     <div class="modes-grid">
       <div class="mode-box">
         <div class="mode-box-header">
-          <h3>阶梯曲线模式</h3>
-          <span class="mode-sub">Curve Interpolation</span>
+          <div>
+            <h3>阶梯曲线模式</h3>
+            <span class="mode-sub">Curve interpolation</span>
+          </div>
         </div>
-        <p class="mode-desc">基于 5 个自定义控制点的分段线性插值查表算法，直观可控，符合直觉。</p>
+        <p class="mode-desc">基于 5 个自定义控制点做分段线性插值，温度与转速对应关系直接透明。</p>
         <ul class="mode-features">
-          <li><strong>调控依据</strong>：综合计算得到的代表温度。</li>
-          <li><strong>平滑机制</strong>：1.5°C 迟滞滤波，消除临界点震荡。</li>
-          <li><strong>交互特性</strong>：支持 Canvas 拖动圆点与表格数值实时双向联动。</li>
-          <li><strong>适用场景</strong>：想要精准掌控某个特定温度区间的转速分界线。</li>
+          <li><strong>调控依据</strong>：按所选策略合成的代表温度</li>
+          <li><strong>平滑机制</strong>：1.5°C 迟滞滤波，避免临界点频繁切换</li>
+          <li><strong>编辑方式</strong>：画布拖拽与 5 节点表格实时双向同步</li>
+          <li><strong>适用场景</strong>：明确希望锁定各温度区间转速上限</li>
         </ul>
       </div>
 
       <div class="mode-box highlight">
         <div class="mode-box-header">
-          <h3>自适应目标温度模式</h3>
-          <span class="mode-sub">Target Feedback (闭环推荐)</span>
+          <div>
+            <h3>自适应目标温度模式</h3>
+            <span class="mode-sub">Closed-loop target control</span>
+          </div>
+          <kbd class="reg-cap accent">推荐</kbd>
         </div>
-        <p class="mode-desc">比例控制律 + 死区滤波 + 升降速率限制，算法自动调整转速上限将温度维持在目标值。</p>
+        <p class="mode-desc">比例控制律结合死区滤波与非对称步长限制，自动微调风扇上限以维持设定温度。</p>
         <ul class="mode-features">
-          <li><strong>控制律</strong>：<code>desired = Bias + KP × (avg - Target)</code>。</li>
-          <li><strong>温度输入</strong>：固定采用 CPU 与 GPU 较高的一路，避免平均抵消热源。</li>
-          <li><strong>速率门限</strong>：默认 <code>UpStep=+30%</code>（放开极速）、<code>DownStep=-10%</code>（收紧极稳）。</li>
-          <li><strong>适用场景</strong>：游戏与高性能创作，追求安静与性能的动态最佳平衡点。</li>
+          <li><strong>控制律</strong>：<code>desired = Bias + KP × (avg - Target)</code></li>
+          <li><strong>温度输入</strong>：取 CPU 与 GPU 较高一路，避免均值掩盖热点</li>
+          <li><strong>速率门限</strong>：默认 <code>UpStep +30%</code>、<code>DownStep -10%</code></li>
+          <li><strong>适用场景</strong>：长时间游戏或渲染，兼顾温度稳定与听感平滑</li>
         </ul>
       </div>
 
       <div class="mode-box">
         <div class="mode-box-header">
-          <h3>手动固定转速模式</h3>
-          <span class="mode-sub">Manual Speed Override</span>
+          <div>
+            <h3>手动固定转速模式</h3>
+            <span class="mode-sub">Manual speed override</span>
+          </div>
         </div>
-        <p class="mode-desc">直接锁定固定的风扇占空比上限，完全绕过任何温度曲线与算法计算。</p>
+        <p class="mode-desc">直接写入固定风扇占空比上限，绕过曲线与闭环计算。</p>
         <ul class="mode-features">
-          <li><strong>执行权重</strong>：在常规模式中具有最高优先级，一键锁定。</li>
-          <li><strong>快速接管</strong>：直接在遥测驾驶舱提供开关与 0–100% 滑块。</li>
-          <li><strong>安全兜底</strong>：当触发 CPU≥92°C 或 GPU≥87°C 高温保护时，仍将强制全速。</li>
-          <li><strong>适用场景</strong>：高负载前提前暴力强冷降温，或低负载下追求绝对恒定声音。</li>
+          <li><strong>优先级</strong>：高于曲线与目标模式，可随时一键接管</li>
+          <li><strong>操作位置</strong>：控制台顶部遥测区开关与 0–100% 滑块</li>
+          <li><strong>安全兜底</strong>：CPU ≥ 92°C 或 GPU ≥ 87°C 仍强制释放给主板</li>
+          <li><strong>适用场景</strong>：高负载前提前强冷，或轻载下保持恒定风声</li>
         </ul>
       </div>
     </div>
   </section>
 
-  <!-- 安装与快速开始 -->
   <section class="section-block" id="install">
-    <div class="section-badge">Quick Start</div>
-    <h2 class="section-title">下载安装与系统部署</h2>
-    <p class="section-desc">提供全自动 Windows 安装包与绿色便携版 ZIP 两种发布渠道。</p>
+    <div class="section-head">
+      <span class="section-index">04</span>
+      <div>
+        <h2 class="section-title">下载与部署</h2>
+        <p class="section-desc">提供自动配置驱动与计划任务的 Windows 安装包，以及适合调试的便携版 ZIP。</p>
+      </div>
+    </div>
 
-    <div class="install-cards-row">
+    <div class="install-grid">
       <div class="install-card">
-        <div class="install-card-title">
-          <h3>方式一：Windows 安装包 (推荐)</h3>
-          <span class="install-badge">最省心</span>
+        <div class="install-card-head">
+          <h3>Windows 安装包</h3>
+          <kbd class="reg-cap accent">推荐</kbd>
         </div>
-        <p class="install-desc">包含静默安装 PawnIO 驱动逻辑与自动计划任务部署，支持覆盖更新与标准控制面板卸载。</p>
+        <p class="install-desc">内置静默安装 PawnIO 驱动逻辑与受保护目录计划任务，支持原地覆盖升级与标准卸载。</p>
         <ol class="install-steps">
-          <li>从 <a href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">Releases</a> 下载最新 <code>ECC-Setup-v2.0.0.exe</code>。</li>
-          <li>双击运行安装向导（自动请求管理员提权，默认安装至 <code>%ProgramFiles%\ECC</code>）。</li>
-          <li>安装器自动核验并静默安装 PawnIO 2.2.0 内核驱动（若已安装则自动跳过）。</li>
-          <li>安装完成自动创建桌面与开始菜单快捷方式，支持无 UAC 弹窗开机自启。</li>
+          <li>从 <a href="https://github.com/buglyz/ecc/releases/latest" target="_blank" rel="noopener">Releases</a> 下载 <code>ECC-Setup-v2.0.0.exe</code></li>
+          <li>运行安装向导并确认管理员提权，默认安装至 <code>%ProgramFiles%\ECC</code></li>
+          <li>安装器自动检测并安装 PawnIO 2.2.0 驱动，已安装时自动跳过</li>
+          <li>完成后支持登录无 UAC 弹窗静默自启，托盘点击即可打开控制台</li>
         </ol>
       </div>
 
       <div class="install-card">
-        <div class="install-card-title">
-          <h3>方式二：便携版 ZIP (免安装)</h3>
-          <span class="install-badge" style="background: var(--surface-alt); color: var(--text-muted);">纯绿色</span>
+        <div class="install-card-head">
+          <h3>便携版 ZIP</h3>
+          <kbd class="reg-cap">免安装</kbd>
         </div>
-        <p class="install-desc">适合开发者与排查调试。解压后即可直接运行，依赖文件与驱动均位于当前文件夹。</p>
+        <p class="install-desc">适合源码编译、排障测试或自定义目录部署，所有依赖随目录分发。</p>
         <ol class="install-steps">
-          <li>下载 <code>ecc-v2.0.0-windows-amd64.zip</code> 并解压至任意固定目录。</li>
-          <li>确保系统已安装 PawnIO（可运行 <code>assets/pawnio/PawnIO_setup.exe</code> 安装）。</li>
-          <li>以管理员身份运行 <code>install.ps1</code>（或直接启动 <code>ecc.exe</code>）。</li>
-          <li>程序启动后自动打开浏览器访问 <code>http://127.0.0.1:8765</code>。</li>
+          <li>下载 <code>ecc-v2.0.0-windows-amd64.zip</code> 并解压至固定目录</li>
+          <li>运行 <code>assets/pawnio/PawnIO_setup.exe</code> 确保系统已安装 PawnIO</li>
+          <li>以管理员身份运行 <code>install.ps1</code> 或直接启动 <code>ecc.exe</code></li>
+          <li>启动后浏览器自动打开 <code>http://127.0.0.1:8765</code></li>
         </ol>
       </div>
     </div>
   </section>
 
-  <!-- 命令行参数 -->
   <section class="section-block" id="cli">
-    <div class="section-badge">CLI Flags</div>
-    <h2 class="section-title">命令行启动参数指南</h2>
-    <p class="section-desc">主程序 <code>ecc.exe</code> 支持灵活的命令行启动标志，用于高级配置、测试与后台自动化。</p>
+    <div class="section-head">
+      <span class="section-index">05</span>
+      <div>
+        <h2 class="section-title">命令行参数</h2>
+        <p class="section-desc">主程序 <code>ecc.exe</code> 支持用于端口配置、模拟演练与静默退出的启动标志。</p>
+      </div>
+    </div>
 
     <div class="table-card">
       <table>
         <thead>
           <tr>
-            <th>参数标志</th>
-            <th>默认取值</th>
-            <th>参数用途与详细说明</th>
+            <th>参数</th>
+            <th>默认值</th>
+            <th>说明</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><code>--port</code></td>
             <td><code>8765</code></td>
-            <td>Web 控制台监听端口（只绑定 <code>127.0.0.1</code> 回环地址）</td>
+            <td>Web 控制台监听端口，仅绑定 <code>127.0.0.1</code> 回环地址</td>
           </tr>
           <tr>
             <td><code>--interval</code></td>
             <td><code>1000</code></td>
-            <td>温度传感器采样间隔（单位：毫秒，默认每秒 1 次）</td>
+            <td>温度传感器采样间隔（毫秒）</td>
           </tr>
           <tr>
             <td><code>--dry-run</code></td>
             <td><code>false</code></td>
-            <td>仅记录 EC 写入日志与换算值，<strong>绝不触碰真实底层硬件</strong>（安全演练）</td>
+            <td>仅记录计算结果与写入日志，不操作真实 EC 硬件</td>
           </tr>
           <tr>
             <td><code>--simulate</code></td>
             <td><code>false</code></td>
-            <td>使用内置模拟动态温度引擎测试界面联动（自动附加启用 dry-run）</td>
+            <td>使用内置模拟温度源测试界面联动（自动启用 dry-run）</td>
           </tr>
           <tr>
             <td><code>--no-pawnio</code></td>
             <td><code>false</code></td>
-            <td>强制禁用默认的 PawnIO 驱动后端，改走传统 <code>ec-probe</code>/WinRing0 回退路径</td>
+            <td>禁用默认 PawnIO 后端，回退至 <code>ec-probe</code> / WinRing0 路径</td>
           </tr>
           <tr>
             <td><code>--no-tray</code></td>
             <td><code>false</code></td>
-            <td>禁用 Windows 系统任务栏托盘图标</td>
+            <td>禁用 Windows 系统托盘图标</td>
           </tr>
           <tr>
             <td><code>--no-browser</code></td>
             <td><code>false</code></td>
-            <td>程序启动就绪后不自动拉起系统默认浏览器打开控制台</td>
+            <td>启动就绪后不自动打开浏览器</td>
           </tr>
           <tr>
             <td><code>--skip-admin</code></td>
             <td><code>false</code></td>
-            <td>跳过管理员提权弹窗检查（通常在模拟测试与调试时使用）</td>
+            <td>跳过管理员权限检查，配合模拟模式调试使用</td>
           </tr>
           <tr>
             <td><code>--shutdown</code></td>
             <td><code>false</code></td>
-            <td>通过全局 IPC 管道通知当前正在后台运行的实例优雅退出（安装器/卸载器专用）</td>
+            <td>通过本地 IPC 通知后台运行中的实例优雅退出</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- 常见问题 FAQ -->
   <section class="section-block" id="faq">
-    <div class="section-badge">FAQ</div>
-    <h2 class="section-title">常见问题解答 (FAQ)</h2>
-    <p class="section-desc">关于安全性、驱动认证、硬件兼容性与配置持久化的解答。</p>
+    <div class="section-head">
+      <span class="section-index">06</span>
+      <div>
+        <h2 class="section-title">常见问题</h2>
+        <p class="section-desc">关于驱动签名、安全机制、硬件兼容性与本地隐私的说明。</p>
+      </div>
+    </div>
 
-    <div class="faq-accordion">
+    <div class="faq-list">
       <details class="faq-item" open>
-        <summary class="faq-question">需要关闭 Windows 11 的“内存完整性 / 核心隔离”吗？</summary>
+        <summary class="faq-question">需要关闭 Windows 11 的内存完整性（HVCI）吗？</summary>
         <div class="faq-answer">
-          <p><strong>完全不需要！</strong>在 2.0.0 版本中，默认的 EC 读写后端已经全面升级为 <strong>PawnIO 2.x</strong>。PawnIO 驱动拥有微软官方 WHCP 签名，100% 兼容 Windows 11 HVCI 内存完整性机制。你可以在完全开启核心隔离的情况下正常稳定运行，绝无任何驱动拦截报错。</p>
+          <p>不需要。v2.0.0 默认采用微软 WHCP 签名的 PawnIO 2.x 驱动读写 EC 寄存器，可在开启核心隔离与内存完整性的环境下正常运行。</p>
         </div>
       </details>
 
       <details class="faq-item">
-        <summary class="faq-question">开机自启动为什么有时候不会弹出 UAC 管理员提权窗口？</summary>
+        <summary class="faq-question">开机自启为什么有时不弹 UAC 提权窗口？</summary>
         <div class="faq-answer">
-          <p>这是 ECC 的安全机制设计：如果通过官方安装包安装在 <code>C:\Program Files\ECC</code> 下，由于该目录属于受保护的系统安全路径，开机自启会使用系统计划任务的 <code>HIGHEST</code> 特权级静默启动，免去每次开机点击 UAC 提权；如果安装在非保护目录，开机自启则使用普通用户级任务，登录时程序会请求一次 UAC 确认，杜绝以高权限自启非保护目录的提权安全风险。</p>
+          <p>当通过安装包部署在受保护的 <code>C:\Program Files\ECC</code> 目录时，自启任务使用计划任务的 <code>HIGHEST</code> 权限静默启动，免去每次登录确认 UAC。若运行于非受保护目录，则仅创建普通用户任务并在启动时请求 UAC，避免非受保护路径的高权限提权风险。</p>
         </div>
       </details>
 
       <details class="faq-item">
-        <summary class="faq-question">如果软件崩溃或卡死，笔记本风扇会停转导致硬件过热吗？</summary>
+        <summary class="faq-question">程序崩溃或卡死会导致风扇停转吗？</summary>
         <div class="faq-answer">
-          <p><strong>绝对不会。</strong>ECC 设计了多重冗余安全机制：</p>
+          <p>不会。ECC 内置三层保护机制：</p>
           <ul>
-            <li><strong>独立看门狗进程</strong>：主程序启动时会同步拉起一个独立的看门狗进程监控心跳；若主程序崩溃、被任务管理器杀死或线程死锁导致 30 秒无心跳，看门狗会立即向 EC 写入 <code>0xFF</code> 释放所有控制权，交还给主板 BIOS 原厂风扇曲线。</li>
-            <li><strong>传感器失联保护</strong>：若温度传感器连续 3 个周期未读取到有效数值，控制器主动退出并写入 <code>0xFF</code> 释放硬件。</li>
-            <li><strong>两阶段高温硬保护</strong>：只要侦测到 CPU≥92°C 或 GPU≥87°C，无视任何软件锁定，强制把控制权归还给主板全力排热。</li>
+            <li>独立看门狗进程持续监测心跳，主进程崩溃或 30 秒无响应即写入 <kbd class="reg-cap">0xFF</kbd> 释放控制权</li>
+            <li>传感器连续 3 个周期无有效读数时，控制器主动退出并退还主板固件</li>
+            <li>CPU ≥ 92°C 或 GPU ≥ 87°C 触发两阶段高温硬保护，无视软件设定交还主板全速散热</li>
           </ul>
         </div>
       </details>
 
       <details class="faq-item">
-        <summary class="faq-question">目标温度模式下为什么风扇转速有时候降不下来？</summary>
+        <summary class="faq-question">目标温度模式下为什么风扇转速有时降不下来？</summary>
         <div class="faq-answer">
-          <p>在蓝天/神舟等大多数笔记本架构中，EC 寄存器 <code>0x2C/0x2D</code> 的物理意义是<strong>风扇占空比上限（Speed Cap）</strong>。这意味着：ECC 可以将风扇转速压制到原厂曲线以下以换取静音，但如果主板固件自身的温控规则在当前温度下要求更激进的高转速，由于硬件是“取二者较严格者”，软件上限不会越权强行停转风扇。此外，若当前处于 <code>UpStep/DownStep</code> 降速速率限制中，风扇也会以设定步进缓慢收紧，避免瞬间忽快忽慢。</p>
+          <p>在蓝天与神舟模具中，<kbd class="reg-cap">0x2C</kbd> / <kbd class="reg-cap">0x2D</kbd> 表示风扇占空比上限（Speed Cap）。ECC 可压低风扇上限以降低噪音，但如果主板固件自身规则要求更高转速，硬件不会低于固件安全底线。同时 <code>DownStep</code> 速率限制会让降速按步进平稳收紧。</p>
         </div>
       </details>
 
       <details class="faq-item">
-        <summary class="faq-question">我的笔记本能用吗？如何排查兼容性？</summary>
+        <summary class="faq-question">其他品牌笔记本能用吗？如何核验兼容性？</summary>
         <div class="faq-answer">
-          <p>本项目已在神舟 Hasee QNLXS（i7-12650H + RTX 4060，BIOS SQ131）完成 100% 验证，并适配大多数蓝天（Clevo）及同方公模架构的机型。不同品牌和主板 EC 寄存器定义可能不同。建议未知机型首次运行添加 <code>--simulate</code> 或 <code>--dry-run</code> 启动，并在管理员终端中核验读写响应后再实际接管。</p>
+          <p>当前已在神舟 Hasee QNLXS（i7-12650H + RTX 4060，BIOS SQ131）实机验证，适用于寄存器布局一致的蓝天（Clevo）及同方模具机型。未知机型请先使用 <code>--simulate</code> 或 <code>--dry-run</code> 测试，并在管理员终端核验对应寄存器后再实际接管。</p>
         </div>
       </details>
 
       <details class="faq-item">
-        <summary class="faq-question">软件会收集我的电脑温度或上传数据到云端吗？</summary>
+        <summary class="faq-question">软件会收集或上传硬件温度数据吗？</summary>
         <div class="faq-answer">
-          <p><strong>完全不会。</strong>本软件为 100% 纯本地离线开源项目，不包含任何云端通信接口、数据收集、遥测探针（Telemetry）或用户账号体系。Web 控制台仅绑定回环地址 <code>127.0.0.1</code>，并具备页面 Session Token 与 Host 白名单防跨域拦截防护，网络绝对安全。</p>
+          <p>不会。ECC 是纯本地离线开源工具，不含任何网络请求或遥测上报。Web 控制台仅监听 <code>127.0.0.1</code>，并启用页面 Session Token 与 Host 白名单防跨站请求。</p>
         </div>
       </details>
     </div>
   </section>
 </main>
 
-<!-- 页脚 Footer -->
 <footer class="site-footer">
   <div class="page footer-inner">
-    <div class="footer-brand-col">
+    <div class="footer-brand">
       <div class="footer-logo">
         <span>ECC Fan Controller</span>
-        <span class="footer-version">v2.0.0</span>
+        <kbd class="reg-cap">v2.0.0</kbd>
       </div>
-      <p class="footer-copy">Windows 笔记本 EC 风扇精准控制工具 · 基于 MIT 开源协议发布</p>
-      <p class="footer-disclaimer">免责声明：本软件与任何笔记本电脑硬件制造商无隶属关系。直接写入 EC 寄存器存在潜在风险，请使用者自行核实机型与寄存器分布。</p>
+      <p class="footer-copy">Windows 笔记本 EC 寄存器风扇控制器 · MIT 开源协议</p>
+      <p class="footer-disclaimer">免责声明：本项目与任何笔记本电脑制造商无隶属关系。直接写入 EC 寄存器存在硬件风险，请确认机型与寄存器映射后再启用。</p>
     </div>
-    <div class="footer-links-col">
+    <div class="footer-links">
       <div class="footer-nav-group">
-        <h4>项目资源</h4>
-        <a href="https://github.com/buglyz/ecc" target="_blank" rel="noopener">GitHub 源码仓库</a>
-        <a href="https://github.com/buglyz/ecc/releases" target="_blank" rel="noopener">版本发布列表</a>
-        <a href="https://github.com/buglyz/ecc/issues" target="_blank" rel="noopener">提交问题与反馈</a>
+        <h4>项目</h4>
+        <a href="https://github.com/buglyz/ecc" target="_blank" rel="noopener">GitHub 仓库</a>
+        <a href="https://github.com/buglyz/ecc/releases" target="_blank" rel="noopener">版本发布</a>
+        <a href="https://github.com/buglyz/ecc/issues" target="_blank" rel="noopener">问题反馈</a>
       </div>
       <div class="footer-nav-group">
-        <h4>快速导航</h4>
-        <a href="#features">功能特性</a>
+        <h4>文档</h4>
+        <a href="#features">核心特性</a>
         <a href="#how">底层架构</a>
-        <a href="#install">安装指引</a>
-        <a href="https://github.com/buglyz/ecc/blob/main/LICENSE" target="_blank" rel="noopener">MIT 开源许可</a>
+        <a href="#install">安装指南</a>
+        <a href="https://github.com/buglyz/ecc/blob/main/LICENSE" target="_blank" rel="noopener">MIT 许可</a>
       </div>
     </div>
   </div>
   <div class="page footer-bottom">
-    <span>© <span id="year">2026</span> buglyz · All rights reserved.</span>
+    <span>© <span id="year">2026</span> buglyz</span>
   </div>
 </footer>
 
